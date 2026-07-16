@@ -1,4 +1,5 @@
-import type { ThHTMLAttributes, TdHTMLAttributes, HTMLAttributes } from "react";
+import { Children, cloneElement, isValidElement } from "react";
+import type { ThHTMLAttributes, TdHTMLAttributes, HTMLAttributes, ReactElement } from "react";
 import { cn } from "../../utils/cn";
 
 export function Table({ children }: { children: React.ReactNode }) {
@@ -14,12 +15,30 @@ export function TableHead({ children }: { children: React.ReactNode }) {
 }
 
 export function TableBody({ children }: { children: React.ReactNode }) {
-  return <tbody className="divide-y divide-border/10">{children}</tbody>;
+  return (
+    <tbody className="divide-y divide-border/10">
+      {Children.map(children, (child, index) => {
+        if (!isValidElement(child)) return child;
+        return cloneElement(child as ReactElement<HTMLAttributes<HTMLTableRowElement>>, {
+          style: {
+            ...(child.props as HTMLAttributes<HTMLTableRowElement>).style,
+            animationDelay: `${index * 70}ms`,
+          },
+        });
+      })}
+    </tbody>
+  );
 }
 
 export function TableRow({ children, className, ...rest }: HTMLAttributes<HTMLTableRowElement>) {
   return (
-    <tr className={cn("bg-surface transition-colors hover:bg-surface-elevated/60", className)} {...rest}>
+    <tr
+      className={cn(
+        "animate-[tableRowIn_360ms_ease_both] bg-surface transition-colors hover:bg-surface-elevated/60",
+        className,
+      )}
+      {...rest}
+    >
       {children}
     </tr>
   );

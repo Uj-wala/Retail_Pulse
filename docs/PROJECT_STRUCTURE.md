@@ -40,22 +40,17 @@ RetailPulse/
 │   └── package.json
 │
 ├── backend/
-│   ├── prisma/
-│   │   ├── schema.prisma
-│   │   └── migrations/
-│   ├── src/
-│   │   ├── config/                 # env, database (Prisma client), jwt
-│   │   ├── controllers/            # auth, company, user, profile, category, product, inventory, sale, analytics, report
-│   │   ├── middleware/             # auth, role, company, validation, error
-│   │   ├── models/                 # re-exported Prisma types/enums
-│   │   ├── repositories/           # Prisma data-access layer, one per entity
-│   │   ├── routes/                 # Express routers, one per domain
-│   │   ├── services/               # business logic, one per domain + audit
-│   │   ├── utils/                  # httpError, security, serializers, request helpers
-│   │   ├── validators/             # zod schemas per domain
-│   │   ├── app.ts
-│   │   └── server.ts
-│   └── package.json
+│   ├── app/
+│   │   ├── config.py                # pydantic-settings environment config
+│   │   ├── database.py              # SQLAlchemy engine/session
+│   │   ├── models.py                # SQLAlchemy ORM models + enums
+│   │   ├── schemas.py               # Pydantic request schemas per domain
+│   │   ├── security.py              # JWT, password hashing, auth dependencies
+│   │   ├── serializers.py           # ORM model -> API response dicts
+│   │   ├── main.py                  # FastAPI app, CORS, router registration
+│   │   ├── routers/                 # FastAPI routers (HTTP in/out), one per domain
+│   │   └── services/                # business logic + queries, one per domain + audit
+│   └── requirements.txt
 │
 ├── docs/
 │   ├── API.md
@@ -70,7 +65,7 @@ RetailPulse/
 
 ## Conventions
 
-- **Layering (backend):** `routes` → `controllers` (HTTP in/out) → `services` (business logic, audit logging) → `repositories` (Prisma queries). Validation happens via `middleware/validation.middleware.ts` using zod schemas from `validators/`.
-- **Multi-tenancy:** every domain table (`categories`, `products`, `sales`, ...) carries a `company_id` foreign key. Services always scope queries to `req.user.companyId` — there is no cross-company access.
+- **Layering (backend):** `routers` (HTTP in/out, auth/role dependencies) → `services` (business logic, audit logging, SQLAlchemy queries). Request validation happens via Pydantic models in `schemas.py`.
+- **Multi-tenancy:** every domain table (`categories`, `products`, `sales`, ...) carries a `company_id` foreign key. Services always scope queries to `current_user.company_id` — there is no cross-company access.
 - **Auth:** JWT access tokens (short-lived) + opaque refresh tokens (hashed at rest, rotated on use, revoked on reuse-detection).
 - **Frontend data fetching:** TanStack Query for all server state; forms use `react-hook-form` + `zod` via `@hookform/resolvers`.

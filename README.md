@@ -5,8 +5,8 @@ A retail analytics platform for tracking products, categories, inventory, sales,
 ## Tech Stack
 
 - **Frontend:** React + TypeScript + Tailwind CSS + Recharts
-- **Backend:** Node.js + Express + TypeScript
-- **Database:** PostgreSQL + Prisma ORM
+- **Backend:** Python + FastAPI
+- **Database:** PostgreSQL + SQLAlchemy ORM
 - **Auth:** JWT (access + refresh tokens) with role-based access control
 
 ## Project Structure
@@ -14,7 +14,7 @@ A retail analytics platform for tracking products, categories, inventory, sales,
 See [docs/PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md) for the full folder layout.
 
 - `frontend/` — React app (pages, components, API clients, routing)
-- `backend/` — Express API (controllers, services, repositories, Prisma schema)
+- `backend/` — FastAPI app (routers, services, SQLAlchemy models)
 - `docs/` — API reference, database schema, and requirements
 
 ## Getting Started
@@ -31,13 +31,14 @@ Or point `DATABASE_URL` in `backend/.env` at your own PostgreSQL instance.
 
 ```bash
 cd backend
-npm install
+python -m venv .venv
+.venv\Scripts\activate   # on macOS/Linux: source .venv/bin/activate
+pip install -r requirements.txt
 cp .env.example .env   # adjust values as needed
-npx prisma migrate dev
-npm run dev
+python -m uvicorn app.main:app --reload --port 4000
 ```
 
-The API runs on `http://localhost:4000`.
+The API runs on `http://localhost:4000`. Tables are created automatically on startup.
 
 ### 3. Frontend
 

@@ -1,5 +1,5 @@
 import { createContext, useCallback, useMemo, useState, type ReactNode } from "react";
-import { CheckCircle2, XCircle, X } from "lucide-react";
+import { Bell, CheckCircle2, XCircle, X } from "lucide-react";
 import { cn } from "../utils/cn";
 
 export type NotificationSeverity = "success" | "error";
@@ -20,6 +20,7 @@ let nextId = 1;
 
 export function NotificationProvider({ children }: { children: ReactNode }) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [bellPulse, setBellPulse] = useState(0);
 
   const dismiss = useCallback((id: number) => {
     setNotifications((current) => current.filter((item) => item.id !== id));
@@ -29,6 +30,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     (message: string, severity: NotificationSeverity = "success") => {
       const id = nextId++;
       setNotifications((current) => [...current, { id, message, severity }]);
+      setBellPulse((value) => value + 1);
       window.setTimeout(() => dismiss(id), 4000);
     },
     [dismiss],
@@ -39,6 +41,15 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   return (
     <NotificationContext.Provider value={value}>
       {children}
+      <div className="fixed right-4 top-4 z-50">
+        <div
+          key={bellPulse}
+          className="grid h-10 w-10 place-items-center rounded-full border border-border/20 bg-surface-elevated text-content shadow-lg backdrop-blur animate-[bellShake_520ms_ease]"
+          title="Notifications"
+        >
+          <Bell className="h-5 w-5" />
+        </div>
+      </div>
       <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2">
         {notifications.map((item) => (
           <div

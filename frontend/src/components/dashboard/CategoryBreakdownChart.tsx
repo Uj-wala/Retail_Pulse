@@ -15,7 +15,16 @@ export function CategoryBreakdownChart({ data }: { data: CategoryRevenue[] }) {
         <div className="h-64">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
-              <Pie data={data} dataKey="revenue" nameKey="category" innerRadius={55} outerRadius={85} paddingAngle={2}>
+              <Pie
+                data={data}
+                dataKey="revenue"
+                nameKey="category"
+                innerRadius={55}
+                outerRadius={85}
+                paddingAngle={2}
+                isAnimationActive
+                animationDuration={1200}
+              >
                 {data.map((entry, index) => (
                   <Cell key={entry.category} fill={COLORS[index % COLORS.length]} />
                 ))}

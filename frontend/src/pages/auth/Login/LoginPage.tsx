@@ -3,6 +3,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { Link, useNavigate } from "react-router-dom";
 import { useMutation } from "@tanstack/react-query";
+import { isAxiosError } from "axios";
 import { authApi } from "../../../api/authApi";
 import { FormTextField } from "../../../components/forms/FormTextField";
 import { PasswordField } from "../../../components/forms/PasswordField";
@@ -10,6 +11,23 @@ import { Button } from "../../../components/common/Button";
 import { Card } from "../../../components/common/Card";
 import { useAuth } from "../../../hooks/useAuth";
 import { loginSchema, type LoginFormValues } from "./loginSchema";
+
+function getLoginErrorMessage(error: unknown): string {
+  if (!isAxiosError(error)) return "Something went wrong. Please try again.";
+
+  if (!error.response) {
+    return "Login API is not reachable. Start the backend server and try again.";
+  }
+
+  if (error.response.status === 401) {
+    return "Invalid email or password.";
+  }
+
+  const data = error.response.data as { detail?: unknown } | undefined;
+  if (typeof data?.detail === "string") return data.detail;
+
+  return "Could not sign in. Please try again.";
+}
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -27,8 +45,8 @@ export function LoginPage() {
       login(tokens);
       navigate("/dashboard", { replace: true });
     },
-    onError: () => {
-      setErrorMessage("Invalid email or password.");
+    onError: (error) => {
+      setErrorMessage(getLoginErrorMessage(error));
     },
   });
 

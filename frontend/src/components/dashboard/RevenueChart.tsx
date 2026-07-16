@@ -23,7 +23,15 @@ export function RevenueChart({ data }: { data: RevenuePoint[] }) {
               formatter={(value: number) => formatCurrency(value)}
               contentStyle={{ borderRadius: 8, fontSize: 12 }}
             />
-            <Area type="monotone" dataKey="revenue" stroke="#14B8A6" strokeWidth={2} fill="url(#revenueFill)" />
+            <Area
+              type="monotone"
+              dataKey="revenue"
+              stroke="#14B8A6"
+              strokeWidth={2}
+              fill="url(#revenueFill)"
+              isAnimationActive
+              animationDuration={1200}
+            />
           </AreaChart>
         </ResponsiveContainer>
       </div>

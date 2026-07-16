@@ -6,6 +6,7 @@ import { RoleRoute } from "./RoleRoute";
 import { LoginPage } from "../pages/auth/Login/LoginPage";
 import { RegisterPage } from "../pages/auth/Register/RegisterPage";
 import { ForgotPasswordPage } from "../pages/auth/ForgotPassword/ForgotPasswordPage";
+import { ResetPasswordPage } from "../pages/auth/ResetPassword/ResetPasswordPage";
 import { DashboardPage } from "../pages/dashboard/DashboardPage";
 import { ProductsPage } from "../pages/products/ProductsPage";
 import { CategoriesPage } from "../pages/categories/CategoriesPage";
@@ -25,6 +26,7 @@ export const router = createBrowserRouter([
       { path: "/login", element: <LoginPage /> },
       { path: "/register", element: <RegisterPage /> },
       { path: "/forgot-password", element: <ForgotPasswordPage /> },
+      { path: "/reset-password", element: <ResetPasswordPage /> },
     ],
   },
   {

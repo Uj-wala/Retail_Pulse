@@ -3,14 +3,16 @@ import { Sparkles, TrendingUp, ShoppingCart } from "lucide-react";
 
 export function AuthLayout() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-bg p-4 text-content md:p-8">
-      <div className="grid w-full max-w-6xl items-stretch gap-3 md:min-h-[640px] md:grid-cols-[0.82fr_1fr] md:gap-4">
-        <div className="relative hidden flex-col justify-between overflow-hidden rounded-2xl border border-white/10 bg-brand-navy p-10 text-white md:flex">
+    <div className="auth-mesh-bg dark flex min-h-screen items-center justify-center p-4 text-content md:p-8">
+      <div className="grid w-full items-stretch gap-3 md:min-h-[640px] md:w-[62vw] md:min-w-[900px] md:max-w-[1140px] md:grid-cols-[1.05fr_0.95fr] md:gap-5">
+        <div
+          className="relative hidden flex-col justify-between overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-white/5 via-transparent to-black/30 p-10 text-white shadow-2xl shadow-black/50 backdrop-blur-2xl md:flex"
+        >
           <div
             className="absolute inset-0"
             style={{
               background:
-                "linear-gradient(145deg, rgba(20,184,166,0.16), transparent 38%), linear-gradient(330deg, rgba(245,158,11,0.18), transparent 42%)",
+                "radial-gradient(circle at 15% 10%, rgba(20,184,166,0.14), transparent 40%), radial-gradient(circle at 10% 95%, rgba(245,158,11,0.22), transparent 45%)",
             }}
           />
 
@@ -41,7 +43,7 @@ export function AuthLayout() {
           </div>
         </div>
 
-        <div className="flex min-w-0 items-center justify-center">
+        <div className="flex min-w-0 items-center justify-center [&>*]:w-full [&>*]:max-w-none [&>*]:!border-white/10 [&>*]:!bg-gradient-to-br [&>*]:!from-[#0d1420] [&>*]:!to-[#05070d] [&>*]:!shadow-2xl [&>*]:!shadow-black/50">
           <Outlet />
         </div>
       </div>

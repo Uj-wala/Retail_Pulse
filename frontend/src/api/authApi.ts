@@ -19,6 +19,12 @@ export interface ChangePasswordPayload {
   confirm_new_password: string;
 }
 
+export interface ResetPasswordPayload {
+  token: string;
+  new_password: string;
+  confirm_new_password: string;
+}
+
 export const authApi = {
   register: (payload: RegisterCompanyPayload) =>
     axiosClient.post("/auth/register", payload).then((res) => res.data),
@@ -40,5 +46,12 @@ export const authApi = {
     axiosClient.post("/auth/change-password", payload).then((res) => res.data),
 
   forgotPassword: (email: string) =>
-    axiosClient.post("/auth/forgot-password", { email }).then((res) => res.data),
+    axiosClient
+      .post<{ message: string }>("/auth/forgot-password", { email })
+      .then((res) => res.data),
+
+  resetPassword: (payload: ResetPasswordPayload) =>
+    axiosClient
+      .post<{ message: string }>("/auth/reset-password", payload)
+      .then((res) => res.data),
 };

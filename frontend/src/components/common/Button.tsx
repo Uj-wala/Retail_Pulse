@@ -33,7 +33,7 @@ export function Button({
       className={cn(
         "inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold",
         "transition-transform duration-150 disabled:cursor-not-allowed disabled:opacity-60",
-        "active:scale-[0.98]",
+        "hover:scale-[1.05] active:scale-[0.95] disabled:hover:scale-100 disabled:active:scale-100",
         VARIANT_CLASSES[variant],
         className,
       )}

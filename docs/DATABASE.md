@@ -1,6 +1,6 @@
 # Database Schema
 
-PostgreSQL via Prisma. Full schema source: [`backend/prisma/schema.prisma`](../backend/prisma/schema.prisma).
+PostgreSQL via SQLAlchemy. Full schema source: [`backend/app/models.py`](../backend/app/models.py).
 
 ## Entity Overview
 
@@ -50,13 +50,8 @@ User 1---* InventoryTransaction
 
 - `Product.stock_quantity` is the current, authoritative stock level.
 - Every change to `stock_quantity` (via a sale, refund, restock, or manual adjustment) is paired with an `InventoryTransaction` row inside the same database transaction, so stock history can always be reconstructed and cross-checked against the running total.
-- Selling a product decrements stock and inserts a `SALE`-type transaction; refunding a sale re-increments stock and inserts a `RETURN`-type transaction — both happen atomically via `prisma.$transaction`.
+- Selling a product decrements stock and inserts a `SALE`-type transaction; refunding a sale re-increments stock and inserts a `RETURN`-type transaction — both happen within the same request/DB session.
 
 ## Migrations
 
-```bash
-cd backend
-npx prisma migrate dev --name <description>
-```
-
-Run `npx prisma migrate deploy` in production/CI instead of `dev`.
+The FastAPI app creates any missing tables automatically at startup via `Base.metadata.create_all()` (see `backend/app/main.py`), so no separate migration step is required for local development. It never alters existing tables, so it's safe to run against a database that already has this schema.
