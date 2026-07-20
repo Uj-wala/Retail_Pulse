@@ -4,8 +4,8 @@ import { cn } from "../../utils/cn";
 
 export function Table({ children }: { children: React.ReactNode }) {
   return (
-    <div className="overflow-x-auto rounded-xl border border-border/15">
-      <table className="w-full border-collapse text-left text-sm">{children}</table>
+    <div className="w-full overflow-x-auto rounded-xl border border-border/15 [-webkit-overflow-scrolling:touch]">
+      <table className="w-full border-collapse text-left text-xs sm:text-sm">{children}</table>
     </div>
   );
 }
@@ -46,7 +46,7 @@ export function TableRow({ children, className, ...rest }: HTMLAttributes<HTMLTa
 
 export function TableHeaderCell({ children, className, ...rest }: ThHTMLAttributes<HTMLTableCellElement>) {
   return (
-    <th className={cn("px-4 py-3 font-semibold", className)} {...rest}>
+    <th className={cn("px-2 py-3 font-semibold sm:px-4", className)} {...rest}>
       {children}
     </th>
   );
@@ -54,7 +54,7 @@ export function TableHeaderCell({ children, className, ...rest }: ThHTMLAttribut
 
 export function TableCell({ children, className, ...rest }: TdHTMLAttributes<HTMLTableCellElement>) {
   return (
-    <td className={cn("px-4 py-3 align-middle", className)} {...rest}>
+    <td className={cn("px-2 py-3 align-middle sm:px-4", className)} {...rest}>
       {children}
     </td>
   );

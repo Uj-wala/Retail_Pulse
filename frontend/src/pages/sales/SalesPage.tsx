@@ -28,7 +28,10 @@ export function SalesPage() {
   const [refunding, setRefunding] = useState<Sale | null>(null);
 
   const salesQuery = useQuery({ queryKey: ["sales"], queryFn: saleApi.listSales });
-  const productsQuery = useQuery({ queryKey: ["products", ""], queryFn: () => productApi.listProducts() });
+  const productsQuery = useQuery({
+    queryKey: ["products", { isActive: true, pageSize: 200 }],
+    queryFn: () => productApi.listProducts({ isActive: true, pageSize: 200 }),
+  });
 
   const createMutation = useMutation({
     mutationFn: saleApi.createSale,

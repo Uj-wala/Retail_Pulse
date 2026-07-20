@@ -37,11 +37,21 @@ export interface ProfileResponse {
   company: Company;
 }
 
+export interface ActivityLogEntry {
+  id: string;
+  action: string;
+  entity_type: string | null;
+  details: string | null;
+  created_at: string;
+}
+
 export interface Category {
   id: string;
   company_id: string;
   name: string;
   description: string | null;
+  is_active: boolean;
+  product_count: number;
   created_at: string;
   updated_at: string;
 }
@@ -53,11 +63,13 @@ export interface Product {
   category_name: string | null;
   sku: string;
   name: string;
+  brand: string | null;
   description: string | null;
   price: number;
   cost: number;
   stock_quantity: number;
   reorder_level: number;
+  unit_of_measure: string;
   is_active: boolean;
   low_stock: boolean;
   created_at: string;
@@ -100,6 +112,10 @@ export interface AnalyticsSummary {
   total_orders: number;
   total_customers: number;
   low_stock_count: number;
+  total_products: number;
+  active_products: number;
+  inactive_products: number;
+  total_categories: number;
 }
 
 export interface RevenuePoint {

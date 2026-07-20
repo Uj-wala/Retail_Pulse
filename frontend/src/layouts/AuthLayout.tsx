@@ -3,10 +3,10 @@ import { Sparkles, TrendingUp, ShoppingCart } from "lucide-react";
 
 export function AuthLayout() {
   return (
-    <div className="auth-mesh-bg dark flex min-h-screen items-center justify-center p-4 text-content md:p-8">
-      <div className="grid w-full items-stretch gap-3 md:min-h-[640px] md:w-[62vw] md:min-w-[900px] md:max-w-[1140px] md:grid-cols-[1.05fr_0.95fr] md:gap-5">
+    <div className="auth-mesh-bg dark flex min-h-screen items-center justify-center p-4 text-content sm:p-6 md:p-8">
+      <div className="grid w-full items-stretch gap-3 sm:gap-4 md:min-h-[640px] md:w-[62vw] md:max-w-[1140px] md:grid-cols-[1.05fr_0.95fr] md:gap-5">
         <div
-          className="relative hidden flex-col justify-between overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-white/5 via-transparent to-black/30 p-10 text-white shadow-2xl shadow-black/50 backdrop-blur-2xl md:flex"
+          className="relative hidden flex-col justify-between overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-white/5 via-transparent to-black/30 p-6 sm:p-8 md:p-10 text-white shadow-2xl shadow-black/50 backdrop-blur-2xl md:flex"
         >
           <div
             className="absolute inset-0"

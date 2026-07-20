@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { Modal } from "../../components/common/Modal";
 import { Button } from "../../components/common/Button";
 import { FormTextField } from "../../components/forms/FormTextField";
@@ -18,7 +18,11 @@ interface CategoryFormModalProps {
 export function CategoryFormModal({ open, onClose, onSubmit, isSubmitting, initial }: CategoryFormModalProps) {
   const { control, handleSubmit, reset } = useForm<CategoryFormValues>({
     resolver: zodResolver(categorySchema),
-    values: { name: initial?.name ?? "", description: initial?.description ?? "" },
+    values: {
+      name: initial?.name ?? "",
+      description: initial?.description ?? "",
+      isActive: initial?.is_active ?? true,
+    },
   });
 
   return (
@@ -30,8 +34,25 @@ export function CategoryFormModal({ open, onClose, onSubmit, isSubmitting, initi
         })}
         noValidate
       >
-        <FormTextField name="name" control={control} label="Name" />
+        <FormTextField name="name" control={control} label="Category Name" />
         <FormTextArea name="description" control={control} label="Description" />
+
+        <Controller
+          name="isActive"
+          control={control}
+          render={({ field }) => (
+            <label className="mb-4 flex items-center gap-2 text-sm font-medium text-content-muted">
+              <input
+                type="checkbox"
+                checked={field.value}
+                onChange={(event) => field.onChange(event.target.checked)}
+                className="h-4 w-4 rounded border-border/40 accent-brand-teal"
+              />
+              Active
+            </label>
+          )}
+        />
+
         <div className="mt-4 flex justify-end gap-2">
           <Button type="button" variant="outline" onClick={onClose}>
             Cancel

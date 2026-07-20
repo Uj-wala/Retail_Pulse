@@ -4,11 +4,29 @@ import type { Category } from "../types";
 export interface CategoryPayload {
   name: string;
   description?: string;
+  isActive?: boolean;
+}
+
+export interface CategoryFilters {
+  search?: string;
+  isActive?: boolean;
+  page?: number;
+  pageSize?: number;
+}
+
+export interface CategoryListResponse {
+  categories: Category[];
+  total: number;
+  page: number;
+  pageSize: number;
 }
 
 export const categoryApi = {
-  listCategories: () =>
-    axiosClient.get<{ categories: Category[]; total: number }>("/categories").then((res) => res.data),
+  listCategories: (filters: CategoryFilters = {}) =>
+    axiosClient.get<CategoryListResponse>("/categories", { params: filters }).then((res) => res.data),
+
+  getCategory: (id: string) =>
+    axiosClient.get<{ category: Category }>(`/categories/${id}`).then((res) => res.data),
 
   createCategory: (payload: CategoryPayload) =>
     axiosClient.post<{ category: Category }>("/categories", payload).then((res) => res.data),

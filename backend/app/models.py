@@ -43,6 +43,8 @@ class AuditAction(str, enum.Enum):
     PRODUCT_CREATED = "PRODUCT_CREATED"
     PRODUCT_UPDATED = "PRODUCT_UPDATED"
     PRODUCT_DELETED = "PRODUCT_DELETED"
+    PRODUCT_ACTIVATED = "PRODUCT_ACTIVATED"
+    PRODUCT_DEACTIVATED = "PRODUCT_DEACTIVATED"
     CATEGORY_CREATED = "CATEGORY_CREATED"
     CATEGORY_UPDATED = "CATEGORY_UPDATED"
     CATEGORY_DELETED = "CATEGORY_DELETED"
@@ -134,6 +136,7 @@ class Category(Base):
     company_id: Mapped[str] = mapped_column(String, ForeignKey("companies.id"), nullable=False)
     name: Mapped[str] = mapped_column(String, nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
@@ -142,8 +145,12 @@ class Product(Base):
     __tablename__ = "products"
     __table_args__ = (
         UniqueConstraint("company_id", "sku"),
+        UniqueConstraint("company_id", "category_id", "name"),
         Index("ix_products_company_id", "company_id"),
         Index("ix_products_category_id", "category_id"),
+        Index("ix_products_sku", "sku"),
+        Index("ix_products_is_active", "is_active"),
+        Index("ix_products_brand", "brand"),
     )
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=uuid_str)
@@ -151,11 +158,13 @@ class Product(Base):
     category_id: Mapped[str | None] = mapped_column(String, ForeignKey("categories.id"), nullable=True)
     sku: Mapped[str] = mapped_column(String, nullable=False)
     name: Mapped[str] = mapped_column(String, nullable=False)
+    brand: Mapped[str | None] = mapped_column(String, nullable=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     price: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
     cost: Mapped[float] = mapped_column(Numeric(12, 2), default=0, nullable=False)
     stock_quantity: Mapped[int] = mapped_column(default=0, nullable=False)
     reorder_level: Mapped[int] = mapped_column(default=10, nullable=False)
+    unit_of_measure: Mapped[str] = mapped_column(String, default="unit", nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
@@ -224,6 +233,8 @@ class AuditLog(Base):
     company_id: Mapped[str | None] = mapped_column(String, ForeignKey("companies.id"), nullable=True)
     user_id: Mapped[str | None] = mapped_column(String, ForeignKey("users.id"), nullable=True)
     action: Mapped[AuditAction] = mapped_column(Enum(AuditAction, name="AuditAction"), nullable=False)
+    entity_type: Mapped[str | None] = mapped_column(String, nullable=True)
+    details: Mapped[str | None] = mapped_column(String, nullable=True)
     ip_address: Mapped[str | None] = mapped_column(String, nullable=True)
     user_agent: Mapped[str | None] = mapped_column(String, nullable=True)
     created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), default=utcnow)

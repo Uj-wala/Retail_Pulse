@@ -85,35 +85,57 @@ class UpdateCompanyRequest(BaseModel):
 class CategoryRequest(BaseModel):
     name: str = Field(min_length=1, max_length=255)
     description: str | None = Field(default=None, max_length=1000)
+    isActive: bool = True
 
 
 class UpdateCategoryRequest(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=255)
     description: str | None = Field(default=None, max_length=1000)
+    isActive: bool | None = None
 
 
 class ProductRequest(BaseModel):
-    categoryId: str | None = None
+    categoryId: str = Field(min_length=1)
     sku: str = Field(min_length=1, max_length=64)
     name: str = Field(min_length=1, max_length=255)
+    brand: str | None = Field(default=None, max_length=100)
     description: str | None = Field(default=None, max_length=2000)
-    price: float = Field(ge=0)
+    price: float = Field(gt=0)
     cost: float = Field(default=0, ge=0)
     stockQuantity: int = Field(default=0, ge=0)
     reorderLevel: int = Field(default=10, ge=0)
+    unitOfMeasure: str = Field(default="unit", min_length=1, max_length=32)
     isActive: bool = True
+
+    @model_validator(mode="after")
+    def cost_within_price(self):
+        if self.cost > self.price:
+            raise ValueError("Cost Price cannot exceed Unit Price")
+        return self
 
 
 class UpdateProductRequest(BaseModel):
-    categoryId: str | None = None
+    categoryId: str | None = Field(default=None, min_length=1)
     sku: str | None = Field(default=None, min_length=1, max_length=64)
     name: str | None = Field(default=None, min_length=1, max_length=255)
+    brand: str | None = Field(default=None, max_length=100)
     description: str | None = Field(default=None, max_length=2000)
-    price: float | None = Field(default=None, ge=0)
+    price: float | None = Field(default=None, gt=0)
     cost: float | None = Field(default=None, ge=0)
     stockQuantity: int | None = Field(default=None, ge=0)
     reorderLevel: int | None = Field(default=None, ge=0)
+    unitOfMeasure: str | None = Field(default=None, min_length=1, max_length=32)
     isActive: bool | None = None
+
+    @model_validator(mode="after")
+    def cost_within_price(self):
+        if self.cost is not None and self.price is not None and self.cost > self.price:
+            raise ValueError("Cost Price cannot exceed Unit Price")
+        return self
+
+
+class ProductStatusRequest(BaseModel):
+    isActive: bool
 
 
 class InventoryTransactionRequest(BaseModel):

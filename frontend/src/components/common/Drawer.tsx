@@ -1,23 +1,20 @@
 import type { ReactNode } from "react";
 import { X } from "lucide-react";
 
-interface ModalProps {
+interface DrawerProps {
   open: boolean;
   onClose: () => void;
   title: string;
   children: ReactNode;
-  maxWidthClassName?: string;
 }
 
-export function Modal({ open, onClose, title, children, maxWidthClassName = "max-w-lg" }: ModalProps) {
+export function Drawer({ open, onClose, title, children }: DrawerProps) {
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-40 flex items-start justify-center overflow-y-auto overflow-x-hidden p-4 sm:items-center sm:p-6">
+    <div className="fixed inset-0 z-40 flex justify-end overflow-hidden">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      <div
-        className={`relative z-10 w-full ${maxWidthClassName} max-h-[95vh] overflow-y-auto rounded-xl border border-border/15 bg-surface p-4 sm:p-6 shadow-2xl animate-[modalIn_180ms_ease]`}
-      >
+      <div className="relative z-10 h-full w-full max-w-xs sm:max-w-md overflow-y-auto border-l border-border/15 bg-surface p-4 sm:p-6 shadow-2xl animate-[drawerIn_220ms_ease] [-webkit-overflow-scrolling:touch]">
         <div className="mb-4 flex items-start justify-between gap-2">
           <h2 className="text-base font-bold sm:text-lg">{title}</h2>
           <button

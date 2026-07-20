@@ -42,10 +42,32 @@ body {
   color: rgb(var(--color-text));
   animation: gradientBG 12s ease infinite;
   transition: color 200ms ease, background 240ms ease;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html {
+  scroll-behavior: smooth;
+  width: 100%;
+  overflow-x: hidden;
 }
 
 #root {
   min-height: 100vh;
+  width: 100%;
+  overflow-x: hidden;
+}
+
+body {
+  width: 100%;
+  overflow-x: hidden;
+}
+
+img,
+svg,
+video,
+canvas {
+  max-width: 100%;
 }
 
 * {
@@ -54,6 +76,12 @@ body {
 
 .dark * {
   scrollbar-color: rgb(51 65 85) rgb(11 17 32);
+}
+
+/* Smooth scrolling for touch devices */
+.overflow-y-auto,
+.overflow-x-auto {
+  -webkit-overflow-scrolling: touch;
 }
 
 @keyframes gradientBG {
@@ -144,5 +172,16 @@ body {
   to {
     opacity: 1;
     transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes drawerIn {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
   }
 }

@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { DollarSign, ShoppingBag, Users as UsersIcon, AlertTriangle } from "lucide-react";
+import { DollarSign, ShoppingBag, Users as UsersIcon, AlertTriangle, Package, PackageCheck, PackageX, Tags } from "lucide-react";
 import { analyticsApi } from "../../api/analyticsApi";
 import { StatCard } from "../../components/dashboard/StatCard";
 import { RevenueChart } from "../../components/dashboard/RevenueChart";
@@ -62,6 +62,31 @@ export function DashboardPage() {
             label="Low Stock Items"
             value={String(summary?.low_stock_count ?? 0)}
             icon={<AlertTriangle className="h-5 w-5" />}
+          />
+        </div>
+      )}
+
+      {!summaryQuery.isLoading && (
+        <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <StatCard
+            label="Total Products"
+            value={String(summary?.total_products ?? 0)}
+            icon={<Package className="h-5 w-5" />}
+          />
+          <StatCard
+            label="Active Products"
+            value={String(summary?.active_products ?? 0)}
+            icon={<PackageCheck className="h-5 w-5" />}
+          />
+          <StatCard
+            label="Inactive Products"
+            value={String(summary?.inactive_products ?? 0)}
+            icon={<PackageX className="h-5 w-5" />}
+          />
+          <StatCard
+            label="Total Categories"
+            value={String(summary?.total_categories ?? 0)}
+            icon={<Tags className="h-5 w-5" />}
           />
         </div>
       )}

@@ -22,16 +22,22 @@ from .audit import write_audit_log
 from .email import send_password_reset_email
 
 
+def _normalize_email(email: str) -> str:
+    return email.strip().lower()
+
+
 def _find_company_by_email_or_name(db: Session, email: str, name: str) -> Company | None:
+    normalized_email = _normalize_email(email)
+    normalized_name = name.strip().lower()
     return db.scalar(
         select(Company).where(
-            (func.lower(Company.email) == email.lower()) | (func.lower(Company.name) == name.lower())
+            (func.lower(Company.email) == normalized_email) | (func.lower(Company.name) == normalized_name)
         )
     )
 
 
 def _find_user_by_email(db: Session, email: str) -> User | None:
-    return db.scalar(select(User).where(func.lower(User.email) == email.lower()))
+    return db.scalar(select(User).where(func.lower(User.email) == _normalize_email(email)))
 
 
 def _issue_token_pair(db: Session, user: User) -> dict[str, str]:
@@ -48,8 +54,8 @@ def _issue_token_pair(db: Session, user: User) -> dict[str, str]:
 
 
 def register(db: Session, payload: RegisterCompanyRequest, ip_address: str | None, user_agent: str | None):
-    company_email = payload.company_email.lower()
-    owner_email = payload.owner_email.lower()
+    company_email = _normalize_email(str(payload.company_email))
+    owner_email = _normalize_email(str(payload.owner_email))
     company_name = payload.company_name.strip()
 
     if _find_company_by_email_or_name(db, company_email, company_name):
@@ -86,7 +92,7 @@ def register(db: Session, payload: RegisterCompanyRequest, ip_address: str | Non
 
 
 def login(db: Session, payload: LoginRequest, ip_address: str | None, user_agent: str | None):
-    email = payload.email.lower()
+    email = _normalize_email(str(payload.email))
     user = _find_user_by_email(db, email)
 
     if not user:

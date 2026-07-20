@@ -20,7 +20,7 @@ def get_user(db: Session, company_id: str, user_id: str) -> User:
 
 
 def invite_user(db: Session, company_id: str, invited_by: str, payload: InviteUserRequest) -> User:
-    email = payload.email.lower()
+    email = str(payload.email).strip().lower()
     if db.scalar(select(User).where(func.lower(User.email) == email)):
         raise HTTPException(409, "A user with this email already exists")
 

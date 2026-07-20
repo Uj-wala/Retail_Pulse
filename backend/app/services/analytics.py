@@ -18,11 +18,22 @@ def get_summary(db: Session, company_id: str) -> dict:
         )
     )
     low_stock_count = len(low_stock_products(db, company_id))
+
+    total_products = db.scalar(select(func.count(Product.id)).where(Product.company_id == company_id)) or 0
+    active_products = db.scalar(
+        select(func.count(Product.id)).where(Product.company_id == company_id, Product.is_active.is_(True))
+    ) or 0
+    total_categories = db.scalar(select(func.count(Category.id)).where(Category.company_id == company_id)) or 0
+
     return {
         "total_revenue": float(total_revenue or 0),
         "total_orders": total_orders or 0,
         "total_customers": total_customers or 0,
         "low_stock_count": low_stock_count,
+        "total_products": total_products,
+        "active_products": active_products,
+        "inactive_products": total_products - active_products,
+        "total_categories": total_categories,
     }
 
 

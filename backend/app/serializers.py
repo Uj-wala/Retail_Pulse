@@ -1,6 +1,6 @@
 from decimal import Decimal
 
-from .models import Category, Company, InventoryTransaction, Product, Sale, SaleItem, User
+from .models import AuditLog, Category, Company, InventoryTransaction, Product, Sale, SaleItem, User
 
 
 def iso(value):
@@ -37,12 +37,14 @@ def serialize_user(user: User) -> dict:
     }
 
 
-def serialize_category(category: Category) -> dict:
+def serialize_category(category: Category, product_count: int | None = None) -> dict:
     return {
         "id": category.id,
         "company_id": category.company_id,
         "name": category.name,
         "description": category.description,
+        "is_active": category.is_active,
+        "product_count": product_count or 0,
         "created_at": iso(category.created_at),
         "updated_at": iso(category.updated_at),
     }
@@ -56,11 +58,13 @@ def serialize_product(product: Product) -> dict:
         "category_name": product.category.name if product.category else None,
         "sku": product.sku,
         "name": product.name,
+        "brand": product.brand,
         "description": product.description,
         "price": number(product.price),
         "cost": number(product.cost),
         "stock_quantity": product.stock_quantity,
         "reorder_level": product.reorder_level,
+        "unit_of_measure": product.unit_of_measure,
         "is_active": product.is_active,
         "low_stock": product.stock_quantity <= product.reorder_level,
         "created_at": iso(product.created_at),
@@ -88,6 +92,16 @@ def serialize_sale_item(item: SaleItem) -> dict:
         "quantity": item.quantity,
         "unit_price": number(item.unit_price),
         "subtotal": number(item.subtotal),
+    }
+
+
+def serialize_audit_log(log: AuditLog) -> dict:
+    return {
+        "id": log.id,
+        "action": log.action.value,
+        "entity_type": log.entity_type,
+        "details": log.details,
+        "created_at": iso(log.created_at),
     }
 
 

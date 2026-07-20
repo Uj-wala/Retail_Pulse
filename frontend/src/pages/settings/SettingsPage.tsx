@@ -52,32 +52,34 @@ export function SettingsPage() {
   }
 
   return (
-    <div className="max-w-2xl">
-      <h1 className="mb-1 text-xl font-bold">Settings</h1>
-      <p className="mb-6 text-sm text-content-muted">Manage your company profile.</p>
+    <div className="w-full min-h-screen">
+      <div className="mx-auto max-w-2xl">
+        <h1 className="mb-1 text-xl font-bold">Settings</h1>
+        <p className="mb-6 text-sm text-content-muted">Manage your company profile.</p>
 
-      <Card className="p-6">
-        <form onSubmit={handleSubmit((values) => updateMutation.mutate(values))} noValidate>
-          <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2">
-            <FormTextField name="name" control={control} label="Company Name" />
-            <FormTextField name="industry" control={control} label="Industry" />
-            <FormTextField name="phone" control={control} label="Phone Number" />
-            <label className="mb-4 block">
-              <span className="mb-1.5 block text-sm font-medium text-content-muted">Company Email</span>
-              <input
-                value={data.company.email}
-                disabled
-                className="w-full cursor-not-allowed rounded-lg border border-border/25 bg-surface-elevated px-3.5 py-2.5 text-sm text-content-muted"
-              />
-            </label>
-          </div>
-          <FormTextArea name="address" control={control} label="Address" />
+        <Card className="overflow-y-auto p-4 sm:p-6">
+          <form onSubmit={handleSubmit((values) => updateMutation.mutate(values))} noValidate>
+            <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2">
+              <FormTextField name="name" control={control} label="Company Name" />
+              <FormTextField name="industry" control={control} label="Industry" />
+              <FormTextField name="phone" control={control} label="Phone Number" />
+              <label className="mb-4 block">
+                <span className="mb-1.5 block text-sm font-medium text-content-muted">Company Email</span>
+                <input
+                  value={data.company.email}
+                  disabled
+                  className="w-full cursor-not-allowed rounded-lg border border-border/25 bg-surface-elevated px-3.5 py-2.5 text-sm text-content-muted"
+                />
+              </label>
+            </div>
+            <FormTextArea name="address" control={control} label="Address" />
 
-          <Button type="submit" isLoading={updateMutation.isPending} className="mt-2">
-            {updateMutation.isPending ? "Saving..." : "Save Changes"}
-          </Button>
-        </form>
-      </Card>
+            <Button type="submit" isLoading={updateMutation.isPending} className="mt-2">
+              {updateMutation.isPending ? "Saving..." : "Save Changes"}
+            </Button>
+          </form>
+        </Card>
+      </div>
     </div>
   );
 }

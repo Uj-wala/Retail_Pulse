@@ -7,17 +7,23 @@ interface SidebarNavItemProps {
   icon: ReactNode;
   to: string;
   collapsed?: boolean;
+  onNavigate?: () => void;
 }
 
-export function SidebarNavItem({ label, icon, to, collapsed = false }: SidebarNavItemProps) {
+export function SidebarNavItem({ label, icon, to, collapsed = false, onNavigate }: SidebarNavItemProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const selected = location.pathname.startsWith(to);
 
+  const handleClick = () => {
+    navigate(to);
+    onNavigate?.();
+  };
+
   return (
     <button
       type="button"
-      onClick={() => navigate(to)}
+      onClick={handleClick}
       title={collapsed ? label : undefined}
       className={cn(
         "mx-2 mb-0.5 flex w-[calc(100%-1rem)] items-center rounded-lg px-3 py-2.5 text-sm transition-colors",

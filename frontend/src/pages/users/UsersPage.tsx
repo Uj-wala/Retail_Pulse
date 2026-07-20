@@ -30,10 +30,23 @@ export function UsersPage() {
     mutationFn: userApi.inviteUser,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["users"] });
-      notify("User invited");
+      notify("User invited successfully");
       setInviteOpen(false);
     },
-    onError: () => notify("Could not invite user. The email may already be in use.", "error"),
+    onError: (error: any) => {
+      const status = error.response?.status;
+      const message = error.response?.data?.detail || error.message;
+
+      if (status === 409) {
+        notify("A user with this email already exists", "error");
+      } else if (status === 422) {
+        notify("Invalid input. Please check all fields.", "error");
+      } else if (status === 403) {
+        notify("You don't have permission to invite users", "error");
+      } else {
+        notify(message || "Failed to invite user. Please try again.", "error");
+      }
+    },
   });
 
   const updateMutation = useMutation({
