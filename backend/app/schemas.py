@@ -1,6 +1,8 @@
+from datetime import datetime
+
 from pydantic import BaseModel, EmailStr, Field, model_validator
 
-from .models import InventoryTransactionType, UserRole, UserStatus
+from .models import InventoryTransactionType, PaymentMethod, SalesChannel, UserRole, UserStatus
 
 
 class RegisterCompanyRequest(BaseModel):
@@ -146,10 +148,24 @@ class InventoryTransactionRequest(BaseModel):
 
 
 class SaleItemRequest(BaseModel):
-    productId: str
+    productId: str = Field(min_length=1)
     quantity: int = Field(gt=0)
+    unitPrice: float | None = Field(default=None, ge=0)
+    discount: float = Field(default=0, ge=0)
+    tax: float = Field(default=0, ge=0)
 
 
 class SaleRequest(BaseModel):
     customerName: str | None = Field(default=None, max_length=255)
+    saleDate: datetime | None = None
+    salesChannel: SalesChannel = SalesChannel.RETAIL_STORE
+    paymentMethod: PaymentMethod = PaymentMethod.CASH
     items: list[SaleItemRequest] = Field(min_length=1)
+
+
+class UpdateSaleRequest(BaseModel):
+    customerName: str | None = Field(default=None, max_length=255)
+    saleDate: datetime | None = None
+    salesChannel: SalesChannel | None = None
+    paymentMethod: PaymentMethod | None = None
+    items: list[SaleItemRequest] | None = Field(default=None, min_length=1)

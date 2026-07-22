@@ -11,11 +11,16 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const VARIANT_CLASSES: Record<Variant, string> = {
-  primary: "bg-brand-teal text-[#042F2E] hover:bg-brand-teal-dark",
-  secondary: "bg-brand-amber text-[#3F2600] hover:brightness-95",
-  outline: "border border-border/40 text-content hover:bg-surface-elevated",
-  ghost: "text-content hover:bg-surface-elevated",
-  danger: "bg-red-500 text-white hover:bg-red-600",
+  primary:
+    "bg-brand-teal text-[#042F2E] hover:bg-brand-teal-dark shadow-md shadow-brand-teal/20 hover:shadow-xl hover:shadow-brand-teal/40 dark:shadow-black/30 dark:hover:shadow-brand-teal/50",
+  secondary:
+    "bg-brand-amber text-[#3F2600] hover:brightness-95 shadow-md shadow-brand-amber/20 hover:shadow-xl hover:shadow-brand-amber/40 dark:shadow-black/30 dark:hover:shadow-brand-amber/50",
+  outline:
+    "border border-border/40 text-content hover:bg-surface-elevated shadow-sm hover:shadow-lg hover:shadow-slate-900/10 dark:hover:shadow-black/50",
+  ghost:
+    "text-content hover:bg-surface-elevated hover:shadow-lg hover:shadow-slate-900/10 dark:hover:shadow-black/50",
+  danger:
+    "bg-red-500 text-white hover:bg-red-600 shadow-md shadow-red-500/20 hover:shadow-xl hover:shadow-red-500/40 dark:shadow-black/30 dark:hover:shadow-red-500/50",
 };
 
 export function Button({
@@ -31,9 +36,11 @@ export function Button({
     <button
       disabled={disabled || isLoading}
       className={cn(
-        "inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold",
-        "transition-transform duration-150 disabled:cursor-not-allowed disabled:opacity-60",
-        "hover:scale-[1.05] active:scale-[0.95] disabled:hover:scale-100 disabled:active:scale-100",
+        "relative isolate inline-flex items-center justify-center gap-2 overflow-hidden rounded-lg px-4 py-2.5 text-sm font-semibold",
+        "transition-[transform,box-shadow] duration-150 disabled:cursor-not-allowed disabled:opacity-60",
+        "hover:scale-[1.05] active:scale-[0.95] disabled:hover:scale-100 disabled:active:scale-100 disabled:shadow-none",
+        "before:pointer-events-none before:absolute before:inset-0 before:-translate-x-full before:bg-gradient-to-r before:from-transparent before:via-white/35 before:to-transparent before:transition-transform before:duration-700 before:content-['']",
+        "hover:before:translate-x-full",
         VARIANT_CLASSES[variant],
         className,
       )}

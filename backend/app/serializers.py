@@ -89,9 +89,15 @@ def serialize_sale_item(item: SaleItem) -> dict:
         "id": item.id,
         "product_id": item.product_id,
         "product_name": item.product.name if item.product else None,
+        "category_id": item.category_id,
+        "category_name": item.category.name if item.category else item.product.category.name if item.product and item.product.category else None,
         "quantity": item.quantity,
         "unit_price": number(item.unit_price),
+        "discount": number(item.discount),
+        "tax": number(item.tax),
         "subtotal": number(item.subtotal),
+        "total": number(item.total),
+        "remaining_stock": item.product.stock_quantity if item.product else None,
     }
 
 
@@ -110,10 +116,16 @@ def serialize_sale(sale: Sale) -> dict:
         "id": sale.id,
         "company_id": sale.company_id,
         "user_id": sale.user_id,
+        "created_by": sale.user_id,
         "cashier_name": sale.user.name if sale.user else None,
+        "invoice_number": sale.invoice_number,
         "customer_name": sale.customer_name,
+        "sale_date": iso(sale.sale_date),
+        "sales_channel": sale.sales_channel.value,
+        "payment_method": sale.payment_method.value,
         "status": sale.status.value,
         "total_amount": number(sale.total_amount),
         "items": [serialize_sale_item(item) for item in sale.items],
         "created_at": iso(sale.created_at),
+        "updated_at": iso(sale.updated_at),
     }

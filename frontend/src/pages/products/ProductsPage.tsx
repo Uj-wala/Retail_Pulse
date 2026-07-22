@@ -280,7 +280,7 @@ export function ProductsPage() {
                     <button
                       type="button"
                       onClick={() => setViewing(product)}
-                      className="rounded-lg p-2 text-content-muted hover:bg-surface-elevated hover:text-content"
+                      className="icon-action-btn rounded-lg p-2 text-content-muted hover:bg-surface-elevated hover:text-content"
                       title="View details"
                     >
                       <Eye className="h-4 w-4" />
@@ -303,14 +303,14 @@ export function ProductsPage() {
                             setEditing(product);
                             setFormOpen(true);
                           }}
-                          className="rounded-lg p-2 text-content-muted hover:bg-surface-elevated hover:text-content"
+                          className="icon-action-btn rounded-lg p-2 text-content-muted hover:bg-surface-elevated hover:text-content"
                         >
                           <Pencil className="h-4 w-4" />
                         </button>
                         <button
                           type="button"
                           onClick={() => setDeleting(product)}
-                          className="rounded-lg p-2 text-content-muted hover:bg-red-500/10 hover:text-red-500"
+                          className="icon-action-btn rounded-lg p-2 text-content-muted hover:bg-red-500/10 hover:text-red-500"
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>

@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .config import get_settings
 from .database import Base, engine
+from .migrations import ensure_sales_schema
 from .routers import analytics, auth, categories, company, inventory, products, profile, reports, sales, users
 
 settings = get_settings()
@@ -21,6 +22,7 @@ app.add_middleware(
 @app.on_event("startup")
 def on_startup() -> None:
     Base.metadata.create_all(bind=engine)
+    ensure_sales_schema(engine)
 
 
 @app.get("/health")

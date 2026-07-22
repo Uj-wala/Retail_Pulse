@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { DollarSign, ShoppingBag, Users as UsersIcon, AlertTriangle, Package, PackageCheck, PackageX, Tags } from "lucide-react";
+import { IndianRupee, ShoppingBag, Users as UsersIcon, AlertTriangle, Package, PackageCheck, PackageX, Tags } from "lucide-react";
 import { analyticsApi } from "../../api/analyticsApi";
 import { StatCard } from "../../components/dashboard/StatCard";
 import { RevenueChart } from "../../components/dashboard/RevenueChart";
@@ -46,7 +46,7 @@ export function DashboardPage() {
           <StatCard
             label="Total Revenue"
             value={formatCurrency(summary?.total_revenue ?? 0)}
-            icon={<DollarSign className="h-5 w-5" />}
+            icon={<IndianRupee className="h-5 w-5" />}
           />
           <StatCard
             label="Total Orders"

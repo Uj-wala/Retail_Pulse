@@ -2,6 +2,8 @@ export type UserRole = "SUPER_ADMIN" | "COMPANY_ADMIN" | "ANALYST" | "VIEWER";
 export type UserStatus = "ACTIVE" | "INACTIVE" | "SUSPENDED";
 export type InventoryTransactionType = "RESTOCK" | "SALE" | "ADJUSTMENT" | "RETURN";
 export type SaleStatus = "COMPLETED" | "REFUNDED" | "CANCELLED";
+export type SalesChannel = "RETAIL_STORE" | "ONLINE_STORE" | "MARKETPLACE";
+export type PaymentMethod = "CASH" | "CARD" | "UPI" | "BANK_TRANSFER";
 
 export interface Company {
   id: string;
@@ -90,21 +92,33 @@ export interface SaleItem {
   id: string;
   product_id: string;
   product_name: string | null;
+  category_id: string | null;
+  category_name: string | null;
   quantity: number;
   unit_price: number;
+  discount: number;
+  tax: number;
   subtotal: number;
+  total: number;
+  remaining_stock: number | null;
 }
 
 export interface Sale {
   id: string;
   company_id: string;
   user_id: string;
+  created_by: string;
   cashier_name: string | null;
+  invoice_number: string;
   customer_name: string | null;
+  sale_date: string;
+  sales_channel: SalesChannel;
+  payment_method: PaymentMethod;
   status: SaleStatus;
   total_amount: number;
   items: SaleItem[];
   created_at: string;
+  updated_at: string;
 }
 
 export interface AnalyticsSummary {

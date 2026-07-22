@@ -6,7 +6,7 @@ import { CategoryBreakdownChart } from "../../components/dashboard/CategoryBreak
 import { StatCard } from "../../components/dashboard/StatCard";
 import { Spinner } from "../../components/common/Spinner";
 import { formatCurrency } from "../../services/formatters";
-import { DollarSign, ShoppingBag, Users as UsersIcon, AlertTriangle } from "lucide-react";
+import { IndianRupee, ShoppingBag, Users as UsersIcon, AlertTriangle } from "lucide-react";
 
 export function AnalyticsPage() {
   const summaryQuery = useQuery({ queryKey: ["analytics", "summary"], queryFn: analyticsApi.getSummary });
@@ -40,7 +40,7 @@ export function AnalyticsPage() {
       ) : (
         <>
           <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <StatCard label="Total Revenue" value={formatCurrency(summary?.total_revenue ?? 0)} icon={<DollarSign className="h-5 w-5" />} />
+            <StatCard label="Total Revenue" value={formatCurrency(summary?.total_revenue ?? 0)} icon={<IndianRupee className="h-5 w-5" />} />
             <StatCard label="Total Orders" value={String(summary?.total_orders ?? 0)} icon={<ShoppingBag className="h-5 w-5" />} />
             <StatCard label="Total Customers" value={String(summary?.total_customers ?? 0)} icon={<UsersIcon className="h-5 w-5" />} />
             <StatCard label="Low Stock Items" value={String(summary?.low_stock_count ?? 0)} icon={<AlertTriangle className="h-5 w-5" />} />

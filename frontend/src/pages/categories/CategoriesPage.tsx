@@ -200,14 +200,14 @@ export function CategoriesPage() {
                           setEditing(category);
                           setFormOpen(true);
                         }}
-                        className="rounded-lg p-2 text-content-muted hover:bg-surface-elevated hover:text-content"
+                        className="icon-action-btn rounded-lg p-2 text-content-muted hover:bg-surface-elevated hover:text-content"
                       >
                         <Pencil className="h-4 w-4" />
                       </button>
                       <button
                         type="button"
                         onClick={() => setDeleting(category)}
-                        className="rounded-lg p-2 text-content-muted hover:bg-red-500/10 hover:text-red-500"
+                        className="icon-action-btn rounded-lg p-2 text-content-muted hover:bg-red-500/10 hover:text-red-500"
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>

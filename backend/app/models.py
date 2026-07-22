@@ -49,8 +49,12 @@ class AuditAction(str, enum.Enum):
     CATEGORY_UPDATED = "CATEGORY_UPDATED"
     CATEGORY_DELETED = "CATEGORY_DELETED"
     INVENTORY_ADJUSTED = "INVENTORY_ADJUSTED"
+    INVENTORY_UPDATED = "INVENTORY_UPDATED"
     SALE_CREATED = "SALE_CREATED"
+    SALE_UPDATED = "SALE_UPDATED"
+    SALE_DELETED = "SALE_DELETED"
     SALE_REFUNDED = "SALE_REFUNDED"
+    PRODUCT_MARKED_OUT_OF_STOCK = "PRODUCT_MARKED_OUT_OF_STOCK"
     COMPANY_UPDATED = "COMPANY_UPDATED"
 
 
@@ -65,6 +69,19 @@ class SaleStatus(str, enum.Enum):
     COMPLETED = "COMPLETED"
     REFUNDED = "REFUNDED"
     CANCELLED = "CANCELLED"
+
+
+class SalesChannel(str, enum.Enum):
+    RETAIL_STORE = "RETAIL_STORE"
+    ONLINE_STORE = "ONLINE_STORE"
+    MARKETPLACE = "MARKETPLACE"
+
+
+class PaymentMethod(str, enum.Enum):
+    CASH = "CASH"
+    CARD = "CARD"
+    UPI = "UPI"
+    BANK_TRANSFER = "BANK_TRANSFER"
 
 
 class Company(Base):
@@ -194,15 +211,24 @@ class InventoryTransaction(Base):
 
 class Sale(Base):
     __tablename__ = "sales"
-    __table_args__ = (Index("ix_sales_company_id_created_at", "company_id", "created_at"),)
+    __table_args__ = (
+        UniqueConstraint("company_id", "invoice_number"),
+        Index("ix_sales_company_id_created_at", "company_id", "created_at"),
+        Index("ix_sales_company_id_sale_date", "company_id", "sale_date"),
+    )
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=uuid_str)
     company_id: Mapped[str] = mapped_column(String, ForeignKey("companies.id"), nullable=False)
     user_id: Mapped[str] = mapped_column(String, ForeignKey("users.id"), nullable=False)
+    invoice_number: Mapped[str] = mapped_column(String, nullable=False)
     customer_name: Mapped[str | None] = mapped_column(String, nullable=True)
+    sale_date: Mapped[DateTime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+    sales_channel: Mapped[SalesChannel] = mapped_column(Enum(SalesChannel, name="SalesChannel"), nullable=False)
+    payment_method: Mapped[PaymentMethod] = mapped_column(Enum(PaymentMethod, name="PaymentMethod"), nullable=False)
     status: Mapped[SaleStatus] = mapped_column(Enum(SaleStatus, name="SaleStatus"), default=SaleStatus.COMPLETED, nullable=False)
     total_amount: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
     created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
     user: Mapped[User] = relationship()
     items: Mapped[list["SaleItem"]] = relationship(cascade="all, delete-orphan")
@@ -218,11 +244,30 @@ class SaleItem(Base):
     id: Mapped[str] = mapped_column(String, primary_key=True, default=uuid_str)
     sale_id: Mapped[str] = mapped_column(String, ForeignKey("sales.id"), nullable=False)
     product_id: Mapped[str] = mapped_column(String, ForeignKey("products.id"), nullable=False)
+    category_id: Mapped[str | None] = mapped_column(String, ForeignKey("categories.id"), nullable=True)
     quantity: Mapped[int] = mapped_column(nullable=False)
     unit_price: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
+    discount: Mapped[float] = mapped_column(Numeric(12, 2), default=0, nullable=False)
+    tax: Mapped[float] = mapped_column(Numeric(12, 2), default=0, nullable=False)
     subtotal: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
+    total: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
 
     product: Mapped[Product] = relationship()
+    category: Mapped[Category | None] = relationship()
+
+
+class Notification(Base):
+    __tablename__ = "notifications"
+    __table_args__ = (Index("ix_notifications_company_id_created_at", "company_id", "created_at"),)
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=uuid_str)
+    company_id: Mapped[str] = mapped_column(String, ForeignKey("companies.id"), nullable=False)
+    product_id: Mapped[str | None] = mapped_column(String, ForeignKey("products.id"), nullable=True)
+    title: Mapped[str] = mapped_column(String, nullable=False)
+    message: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    product: Mapped[Product | None] = relationship()
 
 
 class AuditLog(Base):

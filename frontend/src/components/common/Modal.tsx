@@ -23,7 +23,7 @@ export function Modal({ open, onClose, title, children, maxWidthClassName = "max
           <button
             type="button"
             onClick={onClose}
-            className="shrink-0 rounded-lg p-1 text-content-muted hover:bg-surface-elevated hover:text-content"
+            className="icon-action-btn shrink-0 rounded-lg p-1 text-content-muted hover:bg-surface-elevated hover:text-content"
           >
             <X className="h-5 w-5" />
           </button>

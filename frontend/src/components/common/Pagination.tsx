@@ -24,7 +24,7 @@ export function Pagination({ page, pageSize, total, onPageChange }: PaginationPr
           type="button"
           onClick={() => onPageChange(page - 1)}
           disabled={page <= 1}
-          className="inline-flex items-center gap-1 rounded-lg border border-border/25 px-2.5 py-1.5 text-xs sm:text-sm font-medium hover:bg-surface-elevated disabled:cursor-not-allowed disabled:opacity-40"
+          className="icon-action-btn inline-flex items-center gap-1 rounded-lg border border-border/25 px-2.5 py-1.5 text-xs sm:text-sm font-medium hover:bg-surface-elevated disabled:cursor-not-allowed disabled:opacity-40"
         >
           <ChevronLeft className="h-3 w-3 sm:h-4 sm:w-4" />
           <span className="hidden sm:inline">Prev</span>
@@ -36,7 +36,7 @@ export function Pagination({ page, pageSize, total, onPageChange }: PaginationPr
           type="button"
           onClick={() => onPageChange(page + 1)}
           disabled={page >= totalPages}
-          className="inline-flex items-center gap-1 rounded-lg border border-border/25 px-2.5 py-1.5 text-xs sm:text-sm font-medium hover:bg-surface-elevated disabled:cursor-not-allowed disabled:opacity-40"
+          className="icon-action-btn inline-flex items-center gap-1 rounded-lg border border-border/25 px-2.5 py-1.5 text-xs sm:text-sm font-medium hover:bg-surface-elevated disabled:cursor-not-allowed disabled:opacity-40"
         >
           <span className="hidden sm:inline">Next</span>
           <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />

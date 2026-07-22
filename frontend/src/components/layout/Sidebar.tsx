@@ -16,7 +16,6 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
-import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "../../hooks/useTheme";
 import { useAuth } from "../../hooks/useAuth";
@@ -24,13 +23,14 @@ import { SidebarNavItem } from "./SidebarNavItem";
 
 interface SidebarProps {
   onNavigate?: () => void;
+  collapsed: boolean;
+  onCollapsedChange: (collapsed: boolean) => void;
 }
 
-export function Sidebar({ onNavigate }: SidebarProps) {
+export function Sidebar({ onNavigate, collapsed, onCollapsedChange }: SidebarProps) {
   const { mode, toggleMode } = useTheme();
   const { logout, user } = useAuth();
   const navigate = useNavigate();
-  const [collapsed, setCollapsed] = useState(false);
 
   const handleLogout = async () => {
     await logout();
@@ -45,8 +45,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
 
   return (
     <div
-      className="sticky top-0 flex h-screen shrink-0 flex-col border-r border-white/10 bg-brand-navy transition-[width] duration-300 ease-out"
-      style={{ width: collapsed ? 70 : "min(260px, calc(100vw - 3rem))" }}
+      className="flex h-full min-h-screen w-full shrink-0 flex-col border-r border-white/10 bg-brand-navy"
     >
       <div className={collapsed ? "flex items-center justify-center px-3 py-6" : "flex items-center gap-2.5 px-5 py-6"}>
         <Sparkles className="h-7 w-7 shrink-0 text-brand-amber" />
@@ -61,9 +60,9 @@ export function Sidebar({ onNavigate }: SidebarProps) {
       <div className="px-2 py-2">
         <button
           type="button"
-          onClick={() => setCollapsed((value) => !value)}
+          onClick={() => onCollapsedChange(!collapsed)}
           title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          className="flex w-full items-center justify-center rounded-lg p-2 text-white/70 transition-colors hover:bg-white/5 hover:text-white"
+          className="icon-action-btn flex w-full items-center justify-center rounded-lg p-2 text-white/70 hover:bg-white/5 hover:text-white"
         >
           {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
         </button>
@@ -82,14 +81,14 @@ export function Sidebar({ onNavigate }: SidebarProps) {
         <SidebarNavItem collapsed={collapsed} label="Profile" icon={<User className="h-4 w-4" />} to="/profile" onNavigate={handleNavigation} />
       </nav>
 
-      <div className="h-px bg-white/10" />
+      <div className="mt-auto h-px bg-white/10" />
 
       <div className={collapsed ? "flex flex-col items-center gap-2 px-2 py-3" : "flex items-center justify-between px-4 py-3"}>
         <button
           type="button"
           onClick={toggleMode}
           title={mode === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-          className="rounded-lg bg-brand-teal/10 p-2 text-white/80 transition-colors hover:bg-brand-teal/20"
+          className="icon-action-btn rounded-lg bg-brand-teal/10 p-2 text-white/80 hover:bg-brand-teal/20"
         >
           {mode === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
         </button>
@@ -97,7 +96,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
           type="button"
           onClick={handleLogout}
           title="Log out"
-          className="rounded-lg p-2 text-white/70 hover:bg-white/5"
+          className="icon-action-btn rounded-lg p-2 text-white/70 hover:bg-white/5"
         >
           <LogOut className="h-4 w-4" />
         </button>
