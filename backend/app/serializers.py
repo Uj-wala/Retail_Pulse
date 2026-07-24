@@ -1,6 +1,18 @@
 from decimal import Decimal
 
-from .models import AuditLog, Category, Company, InventoryTransaction, Product, Sale, SaleItem, User
+from .models import (
+    AuditLog,
+    Category,
+    Company,
+    Inventory,
+    InventoryMovement,
+    InventoryTransaction,
+    Notification,
+    Product,
+    Sale,
+    SaleItem,
+    User,
+)
 
 
 def iso(value):
@@ -60,8 +72,8 @@ def serialize_product(product: Product) -> dict:
         "name": product.name,
         "brand": product.brand,
         "description": product.description,
-        "price": number(product.price),
-        "cost": number(product.cost),
+        "unit_price": number(product.unit_price),
+        "cost_price": number(product.cost_price),
         "stock_quantity": product.stock_quantity,
         "reorder_level": product.reorder_level,
         "unit_of_measure": product.unit_of_measure,
@@ -81,6 +93,57 @@ def serialize_inventory_transaction(transaction: InventoryTransaction) -> dict:
         "quantity": transaction.quantity,
         "note": transaction.note,
         "created_at": iso(transaction.created_at),
+    }
+
+
+def serialize_inventory(inventory: Inventory) -> dict:
+    product = inventory.product
+    return {
+        "id": inventory.id,
+        "company_id": inventory.company_id,
+        "product_id": inventory.product_id,
+        "product_name": product.name if product else None,
+        "sku": product.sku if product else None,
+        "category_id": product.category_id if product else None,
+        "category_name": product.category.name if product and product.category else None,
+        "brand": product.brand if product else None,
+        "current_stock": inventory.current_stock,
+        "reserved_stock": inventory.reserved_stock,
+        "available_stock": inventory.available_stock,
+        "reorder_level": inventory.reorder_level,
+        "stock_status": inventory.stock_status.value,
+        "updated_at": iso(inventory.updated_at),
+    }
+
+
+def serialize_inventory_movement(movement: InventoryMovement) -> dict:
+    inventory = movement.inventory
+    product = inventory.product if inventory else None
+    return {
+        "id": movement.id,
+        "inventory_id": movement.inventory_id,
+        "product_id": inventory.product_id if inventory else None,
+        "product_name": product.name if product else None,
+        "movement_type": movement.movement_type.value,
+        "quantity_changed": movement.quantity_changed,
+        "previous_quantity": movement.previous_quantity,
+        "updated_quantity": movement.updated_quantity,
+        "reason": movement.reason,
+        "remarks": movement.remarks,
+        "performed_by": movement.performed_by,
+        "performed_by_name": movement.performer.name if movement.performer else None,
+        "created_at": iso(movement.created_at),
+    }
+
+
+def serialize_notification(notification: Notification) -> dict:
+    return {
+        "id": notification.id,
+        "product_id": notification.product_id,
+        "product_name": notification.product.name if notification.product else None,
+        "title": notification.title,
+        "message": notification.message,
+        "created_at": iso(notification.created_at),
     }
 
 
@@ -105,7 +168,7 @@ def serialize_audit_log(log: AuditLog) -> dict:
     return {
         "id": log.id,
         "action": log.action.value,
-        "entity_type": log.entity_type,
+        "entity_type": log.entity_type.value if log.entity_type else None,
         "details": log.details,
         "created_at": iso(log.created_at),
     }

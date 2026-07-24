@@ -2,11 +2,11 @@ from fastapi import HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from ..models import AuditAction, Category, Product
+from ..models import AuditAction, AuditEntityType, Category, Product
 from ..schemas import CategoryRequest, UpdateCategoryRequest
 from .audit import write_audit_log
 
-ENTITY_TYPE = "CATEGORY"
+ENTITY_TYPE = AuditEntityType.CATEGORY
 
 
 def list_categories(

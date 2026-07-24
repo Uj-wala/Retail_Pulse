@@ -5,7 +5,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from ..config import get_settings
-from ..models import AuditAction, Company, PasswordResetToken, RefreshToken, User, UserRole, UserStatus
+from ..models import AuditAction, AuditEntityType, Company, PasswordResetToken, RefreshToken, User, UserRole, UserStatus
 from ..schemas import ChangePasswordRequest, LoginRequest, RegisterCompanyRequest, ResetPasswordRequest
 from ..security import (
     create_access_token,
@@ -84,7 +84,7 @@ def register(db: Session, payload: RegisterCompanyRequest, ip_address: str | Non
     db.add(user)
     db.flush()
 
-    write_audit_log(db, AuditAction.COMPANY_REGISTERED, company.id, user.id, ip_address, user_agent)
+    write_audit_log(db, AuditAction.COMPANY_REGISTERED, company.id, user.id, ip_address, user_agent, entity_type=AuditEntityType.COMPANY)
     db.commit()
     db.refresh(company)
     db.refresh(user)
@@ -114,6 +114,7 @@ def login(db: Session, payload: LoginRequest, ip_address: str | None, user_agent
             getattr(user, "id", None),
             ip_address,
             user_agent,
+            entity_type=AuditEntityType.USER,
         )
         db.commit()
         raise HTTPException(401, "Invalid email or password")
@@ -123,7 +124,7 @@ def login(db: Session, payload: LoginRequest, ip_address: str | None, user_agent
 
     user.last_login = datetime.now(timezone.utc)
     tokens = _issue_token_pair(db, user)
-    write_audit_log(db, AuditAction.USER_LOGIN, user.company_id, user.id, ip_address, user_agent)
+    write_audit_log(db, AuditAction.USER_LOGIN, user.company_id, user.id, ip_address, user_agent, entity_type=AuditEntityType.USER)
     db.commit()
     db.refresh(user)
     return tokens, user
@@ -182,7 +183,7 @@ def forgot_password(db: Session, email: str, ip_address: str | None, user_agent:
             expires_at=password_reset_expiry(),
         )
     )
-    write_audit_log(db, AuditAction.PASSWORD_RESET_REQUESTED, user.company_id, user.id, ip_address, user_agent)
+    write_audit_log(db, AuditAction.PASSWORD_RESET_REQUESTED, user.company_id, user.id, ip_address, user_agent, entity_type=AuditEntityType.USER)
     db.commit()
 
     reset_link = f"{settings.frontend_url.rstrip('/')}/reset-password?token={raw_token}"
@@ -211,7 +212,7 @@ def reset_password(db: Session, payload: ResetPasswordRequest, ip_address: str |
     db.query(RefreshToken).filter(RefreshToken.user_id == user.id, RefreshToken.revoked.is_(False)).update(
         {"revoked": True}
     )
-    write_audit_log(db, AuditAction.PASSWORD_RESET_COMPLETED, user.company_id, user.id, ip_address, user_agent)
+    write_audit_log(db, AuditAction.PASSWORD_RESET_COMPLETED, user.company_id, user.id, ip_address, user_agent, entity_type=AuditEntityType.USER)
     db.commit()
 
 
@@ -224,5 +225,5 @@ def change_password(db: Session, user: User, payload: ChangePasswordRequest, ip_
     db.query(RefreshToken).filter(RefreshToken.user_id == current.id, RefreshToken.revoked.is_(False)).update(
         {"revoked": True}
     )
-    write_audit_log(db, AuditAction.PASSWORD_CHANGED, current.company_id, current.id, ip_address, user_agent)
+    write_audit_log(db, AuditAction.PASSWORD_CHANGED, current.company_id, current.id, ip_address, user_agent, entity_type=AuditEntityType.USER)
     db.commit()

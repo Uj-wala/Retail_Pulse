@@ -35,8 +35,8 @@ export function ProductFormModal({
       name: initial?.name ?? "",
       brand: initial?.brand ?? "",
       description: initial?.description ?? "",
-      price: initial?.price ?? 0,
-      cost: initial?.cost ?? 0,
+      unitPrice: initial?.unit_price ?? 0,
+      costPrice: initial?.cost_price ?? 0,
       stockQuantity: initial?.stock_quantity ?? 0,
       reorderLevel: initial?.reorder_level ?? 10,
       unitOfMeasure: initial?.unit_of_measure ?? "unit",
@@ -57,7 +57,7 @@ export function ProductFormModal({
           <div className="mb-4 flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3.5 py-3 text-sm text-amber-500">
             <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" />
             <span>
-              You don&apos;t have any categories yet. Every product needs one —{" "}
+              You don&apos;t have any categories yet. Every product needs one -{" "}
               <Link to="/categories" onClick={onClose} className="font-semibold underline">
                 create a category first
               </Link>
@@ -79,8 +79,8 @@ export function ProductFormModal({
             ))}
           </FormSelect>
           <FormTextField name="brand" control={control} label="Brand" />
-          <FormTextField name="price" control={control} label="Unit Price" type="number" step="0.01" />
-          <FormTextField name="cost" control={control} label="Cost Price" type="number" step="0.01" />
+          <FormTextField name="unitPrice" control={control} label="Unit Price" type="number" step="0.01" />
+          <FormTextField name="costPrice" control={control} label="Cost Price" type="number" step="0.01" />
           <FormTextField name="stockQuantity" control={control} label="Initial Stock Quantity" type="number" />
           <FormTextField name="unitOfMeasure" control={control} label="Unit of Measure" placeholder="pcs, kg, box" />
           <FormTextField name="reorderLevel" control={control} label="Reorder Level" type="number" />

@@ -1,6 +1,7 @@
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Card } from "../common/Card";
 import { formatCurrency } from "../../services/formatters";
+import { chartTooltipItemStyle, chartTooltipLabelStyle, chartTooltipStyle } from "../../services/chartTheme";
 import type { RevenuePoint } from "../../types";
 
 export function RevenueChart({ data }: { data: RevenuePoint[] }) {
@@ -21,7 +22,9 @@ export function RevenueChart({ data }: { data: RevenuePoint[] }) {
             <YAxis tick={{ fontSize: 11, fill: "currentColor" }} className="text-content-muted" width={70} />
             <Tooltip
               formatter={(value: number) => formatCurrency(value)}
-              contentStyle={{ borderRadius: 8, fontSize: 12 }}
+              contentStyle={chartTooltipStyle}
+              labelStyle={chartTooltipLabelStyle}
+              itemStyle={chartTooltipItemStyle}
             />
             <Area
               type="monotone"

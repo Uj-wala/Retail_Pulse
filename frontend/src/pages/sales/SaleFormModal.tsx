@@ -61,7 +61,7 @@ export function SaleFormModal({ open, onClose, onSubmit, isSubmitting, products,
     (items ?? []).forEach((item, index) => {
       if (!item.productId || Number(item.unitPrice) > 0) return;
       const product = products.find((candidate) => candidate.id === item.productId);
-      if (product) setValue(`items.${index}.unitPrice`, product.price);
+      if (product) setValue(`items.${index}.unitPrice`, product.unit_price);
     });
   }, [items, products, setValue]);
 

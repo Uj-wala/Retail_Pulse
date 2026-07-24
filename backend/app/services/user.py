@@ -2,7 +2,7 @@ from fastapi import HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from ..models import AuditAction, User, UserStatus
+from ..models import AuditAction, AuditEntityType, User, UserStatus
 from ..schemas import InviteUserRequest, UpdateProfileRequest, UpdateUserRequest
 from ..security import hash_password
 from .audit import write_audit_log
@@ -34,7 +34,7 @@ def invite_user(db: Session, company_id: str, invited_by: str, payload: InviteUs
     )
     db.add(user)
     db.flush()
-    write_audit_log(db, AuditAction.USER_INVITED, company_id, invited_by)
+    write_audit_log(db, AuditAction.USER_INVITED, company_id, invited_by, entity_type=AuditEntityType.USER)
     db.commit()
     db.refresh(user)
     return user
@@ -48,7 +48,7 @@ def update_user(db: Session, company_id: str, actor_id: str, user_id: str, paylo
         user.role = payload.role
     if payload.status is not None:
         user.status = payload.status
-    write_audit_log(db, AuditAction.USER_UPDATED, company_id, actor_id)
+    write_audit_log(db, AuditAction.USER_UPDATED, company_id, actor_id, entity_type=AuditEntityType.USER)
     db.commit()
     db.refresh(user)
     return user
@@ -59,7 +59,7 @@ def deactivate_user(db: Session, company_id: str, actor_id: str, user_id: str) -
     if user.id == actor_id:
         raise HTTPException(400, "You cannot deactivate your own account")
     user.status = UserStatus.INACTIVE
-    write_audit_log(db, AuditAction.USER_DEACTIVATED, company_id, actor_id)
+    write_audit_log(db, AuditAction.USER_DEACTIVATED, company_id, actor_id, entity_type=AuditEntityType.USER)
     db.commit()
     db.refresh(user)
     return user

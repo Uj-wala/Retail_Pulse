@@ -1,27 +1,53 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Boxes, ArrowUpRight, ArrowDownRight } from "lucide-react";
-import { inventoryApi } from "../../api/inventoryApi";
-import { productApi } from "../../api/productApi";
-import { Button } from "../../components/common/Button";
+import { isAxiosError } from "axios";
+import { Boxes, History, Layers, PackageX, Search, SlidersHorizontal } from "lucide-react";
+import { inventoryApi, type InventoryFilters } from "../../api/inventoryApi";
+import { categoryApi } from "../../api/categoryApi";
 import { EmptyState } from "../../components/common/EmptyState";
 import { Spinner } from "../../components/common/Spinner";
 import { Badge } from "../../components/common/Badge";
+import { Pagination } from "../../components/common/Pagination";
 import { Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } from "../../components/tables/Table";
+import { StatCard } from "../../components/dashboard/StatCard";
+import { InventoryByCategoryChart } from "../../components/inventory/InventoryByCategoryChart";
+import { StockStatusChart } from "../../components/inventory/StockStatusChart";
 import { formatDateTime } from "../../services/formatters";
 import { useAuth } from "../../hooks/useAuth";
 import { useNotification } from "../../hooks/useNotification";
-import { InventoryFormModal } from "./InventoryFormModal";
-import type { InventoryTransactionFormValues } from "./inventorySchema";
+import { StockAdjustmentModal } from "./StockAdjustmentModal";
+import { MovementHistoryDrawer } from "./MovementHistoryDrawer";
+import type { Inventory, StockStatus } from "../../types";
+import type { StockAdjustmentFormValues } from "./inventorySchema";
 
-const MANAGER_ROLES = ["COMPANY_ADMIN", "SUPER_ADMIN", "ANALYST"];
+const MANAGER_ROLES = ["COMPANY_ADMIN", "SUPER_ADMIN"];
+const PAGE_SIZE = 10;
 
-const TYPE_TONE: Record<string, "success" | "warning" | "neutral" | "danger"> = {
-  RESTOCK: "success",
-  RETURN: "success",
-  SALE: "neutral",
-  ADJUSTMENT: "warning",
+const STATUS_TONE: Record<StockStatus, "success" | "warning" | "danger"> = {
+  IN_STOCK: "success",
+  LOW_STOCK: "warning",
+  OUT_OF_STOCK: "danger",
 };
+
+const STATUS_LABEL: Record<StockStatus, string> = {
+  IN_STOCK: "In Stock",
+  LOW_STOCK: "Low Stock",
+  OUT_OF_STOCK: "Out of Stock",
+};
+
+function getApiErrorMessage(error: unknown, fallback: string): string {
+  if (!isAxiosError(error)) return fallback;
+  if (!error.response) {
+    return "Inventory API is not reachable. Start the backend server and try again.";
+  }
+  const data = error.response.data as { detail?: unknown } | undefined;
+  if (typeof data?.detail === "string") return data.detail;
+  if (Array.isArray(data?.detail) && data.detail.length > 0) {
+    const firstMessage = (data.detail[0] as { msg?: unknown })?.msg;
+    if (typeof firstMessage === "string") return firstMessage;
+  }
+  return fallback;
+}
 
 export function InventoryPage() {
   const { user } = useAuth();
@@ -29,91 +55,225 @@ export function InventoryPage() {
   const queryClient = useQueryClient();
   const canManage = !!user && MANAGER_ROLES.includes(user.role);
 
-  const [formOpen, setFormOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const [categoryId, setCategoryId] = useState("");
+  const [brand, setBrand] = useState("");
+  const [stockStatus, setStockStatus] = useState<InventoryFilters["stockStatus"]>("");
+  const [sort, setSort] = useState<InventoryFilters["sort"]>("recent");
+  const [page, setPage] = useState(1);
+  const [adjusting, setAdjusting] = useState<Inventory | null>(null);
+  const [historyFor, setHistoryFor] = useState<Inventory | null>(null);
 
-  const transactionsQuery = useQuery({
-    queryKey: ["inventory-transactions"],
-    queryFn: () => inventoryApi.listTransactions(),
+  const filters: InventoryFilters = {
+    search: search || undefined,
+    categoryId: categoryId || undefined,
+    brand: brand || undefined,
+    stockStatus: stockStatus || undefined,
+    sort,
+    page,
+    pageSize: PAGE_SIZE,
+  };
+
+  const inventoryQuery = useQuery({
+    queryKey: ["inventory", filters],
+    queryFn: () => inventoryApi.listInventory(filters),
   });
-  const productsQuery = useQuery({ queryKey: ["products", ""], queryFn: () => productApi.listProducts() });
+  const summaryQuery = useQuery({ queryKey: ["inventory-summary"], queryFn: () => inventoryApi.getSummary() });
+  const chartsQuery = useQuery({ queryKey: ["inventory-charts"], queryFn: () => inventoryApi.getCharts() });
+  const categoriesQuery = useQuery({
+    queryKey: ["categories", { pageSize: 200 }],
+    queryFn: () => categoryApi.listCategories({ pageSize: 200 }),
+  });
 
-  const createMutation = useMutation({
-    mutationFn: inventoryApi.createTransaction,
+  const adjustMutation = useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: StockAdjustmentFormValues }) =>
+      inventoryApi.adjustStock(id, payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["inventory-transactions"] });
-      queryClient.invalidateQueries({ queryKey: ["products"] });
-      notify("Inventory movement recorded");
-      setFormOpen(false);
+      queryClient.invalidateQueries({ queryKey: ["inventory"] });
+      queryClient.invalidateQueries({ queryKey: ["inventory-summary"] });
+      queryClient.invalidateQueries({ queryKey: ["inventory-charts"] });
+      queryClient.invalidateQueries({ queryKey: ["inventory-movements"] });
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      notify("Stock adjustment recorded");
+      setAdjusting(null);
     },
-    onError: () => {
-      notify("Could not record movement. Check the quantity and try again.", "error");
+    onError: (error) => {
+      notify(getApiErrorMessage(error, "Could not record the adjustment. Please try again."), "error");
     },
   });
 
-  const transactions = transactionsQuery.data?.transactions ?? [];
-  const products = productsQuery.data?.products ?? [];
+  const items = inventoryQuery.data?.items ?? [];
+  const categories = categoriesQuery.data?.categories ?? [];
+  const summary = summaryQuery.data;
+  const charts = chartsQuery.data;
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold">Inventory</h1>
-          <p className="text-sm text-content-muted">Track stock movements across your catalog.</p>
-        </div>
-        {canManage && (
-          <Button icon={<Plus className="h-4 w-4" />} onClick={() => setFormOpen(true)}>
-            Record Movement
-          </Button>
-        )}
+      <div className="mb-6">
+        <h1 className="text-xl font-bold">Inventory</h1>
+        <p className="text-sm text-content-muted">Monitor stock levels and record movements across your catalog.</p>
       </div>
 
-      {transactionsQuery.isLoading ? (
+      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard label="Total Products" value={summary ? String(summary.totalProducts) : "—"} icon={<Boxes className="h-5 w-5" />} />
+        <StatCard label="Total Inventory Quantity" value={summary ? String(summary.totalInventoryQuantity) : "—"} icon={<Layers className="h-5 w-5" />} />
+        <StatCard label="Low Stock Products" value={summary ? String(summary.lowStockProducts) : "—"} icon={<SlidersHorizontal className="h-5 w-5" />} />
+        <StatCard label="Out of Stock Products" value={summary ? String(summary.outOfStockProducts) : "—"} icon={<PackageX className="h-5 w-5" />} />
+      </div>
+
+      <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <InventoryByCategoryChart data={charts?.byCategory ?? []} />
+        <StockStatusChart data={charts?.byStatus ?? []} />
+      </div>
+
+      <div className="mb-4 flex flex-col gap-3 sm:flex-wrap sm:flex-row">
+        <div className="relative flex-1 min-w-0">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-content-muted" />
+          <input
+            value={search}
+            onChange={(event) => {
+              setSearch(event.target.value);
+              setPage(1);
+            }}
+            placeholder="Search by product name or SKU"
+            className="w-full rounded-lg border border-border/25 bg-surface py-2.5 pl-9 pr-3.5 text-sm outline-none focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/20"
+          />
+        </div>
+        <select
+          value={categoryId}
+          onChange={(event) => {
+            setCategoryId(event.target.value);
+            setPage(1);
+          }}
+          className="rounded-lg border border-border/25 bg-surface px-3 py-2.5 text-sm outline-none focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/20"
+        >
+          <option value="">All Categories</option>
+          {categories.map((category) => (
+            <option key={category.id} value={category.id}>
+              {category.name}
+            </option>
+          ))}
+        </select>
+        <input
+          value={brand}
+          onChange={(event) => {
+            setBrand(event.target.value);
+            setPage(1);
+          }}
+          placeholder="Filter by brand"
+          className="w-full rounded-lg border border-border/25 bg-surface px-3 py-2.5 text-sm outline-none focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/20 sm:w-40"
+        />
+        <select
+          value={stockStatus}
+          onChange={(event) => {
+            setStockStatus(event.target.value as InventoryFilters["stockStatus"]);
+            setPage(1);
+          }}
+          className="rounded-lg border border-border/25 bg-surface px-3 py-2.5 text-sm outline-none focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/20"
+        >
+          <option value="">All Statuses</option>
+          <option value="IN_STOCK">In Stock</option>
+          <option value="LOW_STOCK">Low Stock</option>
+          <option value="OUT_OF_STOCK">Out of Stock</option>
+        </select>
+        <select
+          value={sort}
+          onChange={(event) => {
+            setSort(event.target.value as InventoryFilters["sort"]);
+            setPage(1);
+          }}
+          className="rounded-lg border border-border/25 bg-surface px-3 py-2.5 text-sm outline-none focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/20"
+        >
+          <option value="recent">Recently Updated</option>
+          <option value="name">Name (A-Z)</option>
+          <option value="-name">Name (Z-A)</option>
+          <option value="-stock">Current Stock (High-Low)</option>
+          <option value="stock">Current Stock (Low-High)</option>
+        </select>
+      </div>
+
+      {inventoryQuery.isLoading ? (
         <div className="flex justify-center py-16">
           <Spinner size={28} />
         </div>
-      ) : transactions.length === 0 ? (
-        <EmptyState icon={<Boxes className="h-10 w-10" />} title="No inventory movements yet" />
+      ) : items.length === 0 ? (
+        <EmptyState icon={<Boxes className="h-10 w-10" />} title="No inventory records found" />
       ) : (
         <Table>
           <TableHead>
             <tr>
               <TableHeaderCell>Product</TableHeaderCell>
-              <TableHeaderCell>Type</TableHeaderCell>
-              <TableHeaderCell>Quantity</TableHeaderCell>
-              <TableHeaderCell>Note</TableHeaderCell>
-              <TableHeaderCell>Date</TableHeaderCell>
+              <TableHeaderCell>SKU</TableHeaderCell>
+              <TableHeaderCell>Category</TableHeaderCell>
+              <TableHeaderCell>Brand</TableHeaderCell>
+              <TableHeaderCell>Current</TableHeaderCell>
+              <TableHeaderCell>Reserved</TableHeaderCell>
+              <TableHeaderCell>Available</TableHeaderCell>
+              <TableHeaderCell>Reorder Level</TableHeaderCell>
+              <TableHeaderCell>Status</TableHeaderCell>
+              <TableHeaderCell className="text-right">Actions</TableHeaderCell>
             </tr>
           </TableHead>
           <TableBody>
-            {transactions.map((transaction) => {
-              const isInbound = transaction.type === "RESTOCK" || transaction.type === "RETURN";
-              return (
-                <TableRow key={transaction.id}>
-                  <TableCell className="font-semibold">{transaction.product_name}</TableCell>
-                  <TableCell>
-                    <Badge tone={TYPE_TONE[transaction.type]}>{transaction.type}</Badge>
-                  </TableCell>
-                  <TableCell>
-                    <span className={`flex items-center gap-1 font-semibold ${isInbound ? "text-emerald-500" : "text-red-500"}`}>
-                      {isInbound ? <ArrowUpRight className="h-3.5 w-3.5" /> : <ArrowDownRight className="h-3.5 w-3.5" />}
-                      {transaction.quantity}
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-content-muted">{transaction.note || "—"}</TableCell>
-                  <TableCell className="text-content-muted">{formatDateTime(transaction.created_at)}</TableCell>
-                </TableRow>
-              );
-            })}
+            {items.map((item) => (
+              <TableRow key={item.id}>
+                <TableCell className="font-semibold">{item.product_name}</TableCell>
+                <TableCell className="font-mono text-xs text-content-muted">{item.sku}</TableCell>
+                <TableCell className="text-content-muted">{item.category_name ?? "Uncategorized"}</TableCell>
+                <TableCell className="text-content-muted">{item.brand ?? "-"}</TableCell>
+                <TableCell>{item.current_stock}</TableCell>
+                <TableCell className="text-content-muted">{item.reserved_stock}</TableCell>
+                <TableCell>{item.available_stock}</TableCell>
+                <TableCell className="text-content-muted">{item.reorder_level}</TableCell>
+                <TableCell>
+                  <Badge tone={STATUS_TONE[item.stock_status]}>{STATUS_LABEL[item.stock_status]}</Badge>
+                </TableCell>
+                <TableCell>
+                  <div className="flex justify-end gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setHistoryFor(item)}
+                      className="icon-action-btn rounded-lg p-2 text-content-muted hover:bg-surface-elevated hover:text-content"
+                      title="View movement history"
+                    >
+                      <History className="h-4 w-4" />
+                    </button>
+                    {canManage && (
+                      <button
+                        type="button"
+                        onClick={() => setAdjusting(item)}
+                        className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-content-muted hover:bg-surface-elevated hover:text-content"
+                      >
+                        Adjust Stock
+                      </button>
+                    )}
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
           </TableBody>
         </Table>
       )}
 
-      <InventoryFormModal
-        open={formOpen}
-        onClose={() => setFormOpen(false)}
-        products={products}
-        isSubmitting={createMutation.isPending}
-        onSubmit={(values: InventoryTransactionFormValues) => createMutation.mutate(values)}
+      {inventoryQuery.data && (
+        <Pagination page={page} pageSize={inventoryQuery.data.pageSize} total={inventoryQuery.data.total} onPageChange={setPage} />
+      )}
+
+      {summary && <p className="mt-3 text-xs text-content-muted">Last updated {formatDateTime(new Date().toISOString())}</p>}
+
+      <StockAdjustmentModal
+        open={!!adjusting}
+        onClose={() => setAdjusting(null)}
+        inventory={adjusting}
+        isSubmitting={adjustMutation.isPending}
+        onSubmit={(values) => adjusting && adjustMutation.mutate({ id: adjusting.id, payload: values })}
+      />
+
+      <MovementHistoryDrawer
+        open={!!historyFor}
+        onClose={() => setHistoryFor(null)}
+        productId={historyFor?.product_id ?? null}
+        productName={historyFor?.product_name}
       />
     </div>
   );

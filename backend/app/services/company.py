@@ -1,7 +1,7 @@
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
-from ..models import AuditAction, Company
+from ..models import AuditAction, AuditEntityType, Company
 from ..schemas import UpdateCompanyRequest
 from .audit import write_audit_log
 
@@ -19,7 +19,7 @@ def update_company(db: Session, company_id: str, user_id: str, payload: UpdateCo
         value = getattr(payload, attr)
         if value is not None:
             setattr(company, attr, value.strip())
-    write_audit_log(db, AuditAction.COMPANY_UPDATED, company_id, user_id)
+    write_audit_log(db, AuditAction.COMPANY_UPDATED, company_id, user_id, entity_type=AuditEntityType.COMPANY)
     db.commit()
     db.refresh(company)
     return company

@@ -2,14 +2,14 @@ from datetime import datetime
 
 from fastapi import HTTPException
 from sqlalchemy import desc, func, or_, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload, selectinload
 
 from ..models import (
     AuditAction,
+    AuditEntityType,
     Category,
-    InventoryTransaction,
-    InventoryTransactionType,
-    Notification,
+    InventoryMovementType,
     PaymentMethod,
     Product,
     Sale,
@@ -20,9 +20,11 @@ from ..models import (
 )
 from ..schemas import SaleItemRequest, SaleRequest, UpdateSaleRequest
 from .audit import write_audit_log
+from .inventory import apply_stock_delta
 from .product import get_product
 
-ENTITY_TYPE = "SALE"
+ENTITY_TYPE = AuditEntityType.SALE
+MAX_INVOICE_NUMBER_ATTEMPTS = 5
 
 SORT_MAP = {
     "date": Sale.sale_date.asc(),
@@ -64,19 +66,6 @@ def _generate_invoice_number(db: Session, company_id: str, sale_date: datetime |
     return f"{prefix}{next_number:06d}"
 
 
-def _record_stock_notification(db: Session, company_id: str, product: Product) -> None:
-    if product.stock_quantity == 0:
-        title = "Product out of stock"
-        message = f"{product.name} is now out of stock."
-    elif product.stock_quantity <= product.reorder_level:
-        title = "Product below reorder level"
-        message = f"{product.name} has {product.stock_quantity} units remaining."
-    else:
-        return
-
-    db.add(Notification(company_id=company_id, product_id=product.id, title=title, message=message))
-
-
 def _apply_product_stock_change(
     db: Session,
     company_id: str,
@@ -85,19 +74,7 @@ def _apply_product_stock_change(
     quantity: int,
     note: str,
 ) -> None:
-    product.stock_quantity -= quantity
-    db.add(
-        InventoryTransaction(
-            company_id=company_id,
-            product_id=product.id,
-            user_id=user_id,
-            type=InventoryTransactionType.SALE,
-            quantity=quantity,
-            note=note,
-        )
-    )
-    write_audit_log(db, AuditAction.INVENTORY_UPDATED, company_id, user_id, details=product.name, entity_type="INVENTORY")
-    _record_stock_notification(db, company_id, product)
+    apply_stock_delta(db, company_id, user_id, product, -quantity, InventoryMovementType.SALE, reason=note)
 
     if product.stock_quantity == 0 and product.is_active:
         product.is_active = False
@@ -107,7 +84,7 @@ def _apply_product_stock_change(
             company_id,
             user_id,
             details=product.name,
-            entity_type="PRODUCT",
+            entity_type=AuditEntityType.PRODUCT,
         )
 
 
@@ -119,18 +96,7 @@ def _restore_product_stock(
     note: str,
 ) -> None:
     product = get_product(db, company_id, item.product_id)
-    product.stock_quantity += item.quantity
-    db.add(
-        InventoryTransaction(
-            company_id=company_id,
-            product_id=item.product_id,
-            user_id=user_id,
-            type=InventoryTransactionType.RETURN,
-            quantity=item.quantity,
-            note=note,
-        )
-    )
-    write_audit_log(db, AuditAction.INVENTORY_UPDATED, company_id, user_id, details=product.name, entity_type="INVENTORY")
+    apply_stock_delta(db, company_id, user_id, product, item.quantity, InventoryMovementType.STOCK_ADDITION, reason=note)
 
 
 def _build_sale_items(
@@ -155,7 +121,7 @@ def _build_sale_items(
     product_names: list[str] = []
     for item in items:
         product = get_product(db, company_id, item.productId)
-        unit_price = float(item.unitPrice if item.unitPrice is not None else product.price)
+        unit_price = float(item.unitPrice if item.unitPrice is not None else product.unit_price)
         product_value = unit_price * item.quantity
         if item.discount > product_value:
             raise HTTPException(422, f"Discount cannot exceed product value for {product.name}")
@@ -246,30 +212,46 @@ def get_sale(db: Session, company_id: str, sale_id: str) -> Sale:
 
 
 def create_sale(db: Session, company_id: str, user_id: str, payload: SaleRequest) -> Sale:
+    # Invoice numbers are assigned by reading the current max and incrementing, which is not
+    # atomic on its own. Concurrent requests can compute the same candidate number, so instead
+    # of relying on a pre-check (which has the same race), we rely on the DB-level
+    # UniqueConstraint("company_id", "invoice_number") on Sale and retry with a freshly
+    # generated number whenever it's violated.
     sale_date = payload.saleDate or utcnow()
-    invoice_number = _generate_invoice_number(db, company_id, sale_date)
-    if db.scalar(select(Sale.id).where(Sale.company_id == company_id, Sale.invoice_number == invoice_number)):
-        raise HTTPException(409, "Duplicate invoice number generated. Please retry.")
 
-    sale = Sale(
-        company_id=company_id,
-        user_id=user_id,
-        invoice_number=invoice_number,
-        customer_name=payload.customerName.strip() if payload.customerName else None,
-        sale_date=sale_date,
-        sales_channel=payload.salesChannel,
-        payment_method=payload.paymentMethod,
-        status=SaleStatus.COMPLETED,
-        total_amount=0,
-    )
-    db.add(sale)
-    db.flush()
+    for attempt in range(MAX_INVOICE_NUMBER_ATTEMPTS):
+        invoice_number = _generate_invoice_number(db, company_id, sale_date)
+        sale = Sale(
+            company_id=company_id,
+            user_id=user_id,
+            invoice_number=invoice_number,
+            customer_name=payload.customerName.strip() if payload.customerName else None,
+            sale_date=sale_date,
+            sales_channel=payload.salesChannel,
+            payment_method=payload.paymentMethod,
+            status=SaleStatus.COMPLETED,
+            total_amount=0,
+        )
+        db.add(sale)
+        try:
+            db.flush()
+        except IntegrityError:
+            db.rollback()
+            continue
 
-    total_amount, product_names = _build_sale_items(db, company_id, user_id, sale, payload.items)
-    sale.total_amount = total_amount
-    write_audit_log(db, AuditAction.SALE_CREATED, company_id, user_id, details=_audit_details(invoice_number, product_names), entity_type=ENTITY_TYPE)
-    db.commit()
-    return _load(db, sale.id)
+        total_amount, product_names = _build_sale_items(db, company_id, user_id, sale, payload.items)
+        sale.total_amount = total_amount
+        write_audit_log(db, AuditAction.SALE_CREATED, company_id, user_id, details=_audit_details(invoice_number, product_names), entity_type=ENTITY_TYPE)
+
+        try:
+            db.commit()
+        except IntegrityError:
+            db.rollback()
+            continue
+
+        return _load(db, sale.id)
+
+    raise HTTPException(409, "Could not generate a unique invoice number after multiple attempts. Please retry.")
 
 
 def update_sale(db: Session, company_id: str, user_id: str, sale_id: str, payload: UpdateSaleRequest) -> Sale:

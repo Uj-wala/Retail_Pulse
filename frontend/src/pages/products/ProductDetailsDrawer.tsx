@@ -19,10 +19,16 @@ function Field({ label, value }: { label: string; value: ReactNode }) {
   );
 }
 
+function buildProductSummary(product: Product): string {
+  const category = product.category_name ?? "catalog";
+  const brand = product.brand ? ` from ${product.brand}` : "";
+  return `${product.name} is a ${category} product${brand}. It is priced at ${formatCurrency(product.unit_price)} with ${product.stock_quantity} ${product.unit_of_measure} currently in stock.`;
+}
+
 export function ProductDetailsDrawer({ open, onClose, product }: ProductDetailsDrawerProps) {
   if (!product) return null;
 
-  const margin = product.price > 0 ? ((product.price - product.cost) / product.price) * 100 : 0;
+  const margin = product.unit_price > 0 ? ((product.unit_price - product.cost_price) / product.unit_price) * 100 : 0;
 
   return (
     <Drawer open={open} onClose={onClose} title="Product Details">
@@ -35,23 +41,23 @@ export function ProductDetailsDrawer({ open, onClose, product }: ProductDetailsD
       </div>
 
       <Field label="Category" value={product.category_name ?? "Uncategorized"} />
-      <Field label="Brand" value={product.brand ?? "—"} />
+      <Field label="Brand" value={product.brand ?? "-"} />
       <Field
         label="Unit Price / Cost Price"
-        value={`${formatCurrency(product.price)} / ${formatCurrency(product.cost)} (${margin.toFixed(1)}% margin)`}
+        value={`${formatCurrency(product.unit_price)} / ${formatCurrency(product.cost_price)} (${margin.toFixed(1)}% margin)`}
       />
       <Field
         label="Stock Quantity"
         value={
           <span className={product.low_stock ? "font-bold text-amber-500" : ""}>
             {product.stock_quantity} {product.unit_of_measure}
-            {product.low_stock && " — Low Stock"}
+            {product.low_stock && " - Low Stock"}
           </span>
         }
       />
       <Field label="Reorder Level" value={`${product.reorder_level} ${product.unit_of_measure}`} />
       <Field label="Unit of Measure" value={product.unit_of_measure} />
-      <Field label="Description" value={product.description || "No description provided."} />
+      <Field label="Description" value={product.description || buildProductSummary(product)} />
       <Field label="Created" value={formatDateTime(product.created_at)} />
       <Field label="Last Updated" value={formatDateTime(product.updated_at)} />
     </Drawer>

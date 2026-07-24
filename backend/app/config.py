@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     refresh_token_expire_days: int = 7
     cors_origins: str = "http://localhost:5173"
     port: int = 4000
+    environment: str = "development"
 
     password_reset_token_expire_minutes: int = 30
     frontend_url: str = "http://localhost:5173"

@@ -28,7 +28,7 @@ def list_products(
     brand: str | None = Query(default=None, description="Case-insensitive substring match on brand"),
     sort: str | None = Query(
         default=None,
-        description="One of: name, -name, price, -price, recent (default: recent)",
+        description="One of: name, -name, unitPrice, -unitPrice, recent (default: recent)",
     ),
     page: int = Query(default=1, ge=1, description="1-indexed page number"),
     pageSize: int = Query(default=20, ge=1, le=200, description="Number of products per page (max 200)"),

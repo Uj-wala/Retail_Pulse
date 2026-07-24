@@ -43,8 +43,8 @@ function toPayload(values: ProductFormValues): ProductPayload {
     name: values.name,
     brand: values.brand,
     description: values.description,
-    price: values.price,
-    cost: values.cost,
+    unitPrice: values.unitPrice,
+    costPrice: values.costPrice,
     stockQuantity: values.stockQuantity,
     reorderLevel: values.reorderLevel,
     unitOfMeasure: values.unitOfMeasure,
@@ -228,8 +228,8 @@ export function ProductsPage() {
           <option value="recent">Recently Added</option>
           <option value="name">Name (A-Z)</option>
           <option value="-name">Name (Z-A)</option>
-          <option value="price">Price (Low-High)</option>
-          <option value="-price">Price (High-Low)</option>
+          <option value="unitPrice">Price (Low-High)</option>
+          <option value="-unitPrice">Price (High-Low)</option>
         </select>
       </div>
 
@@ -259,8 +259,8 @@ export function ProductsPage() {
                 <TableCell className="font-mono text-xs text-content-muted">{product.sku}</TableCell>
                 <TableCell className="font-semibold">{product.name}</TableCell>
                 <TableCell className="text-content-muted">{product.category_name ?? "Uncategorized"}</TableCell>
-                <TableCell className="text-content-muted">{product.brand ?? "—"}</TableCell>
-                <TableCell>{formatCurrency(product.price)}</TableCell>
+                <TableCell className="text-content-muted">{product.brand ?? "-"}</TableCell>
+                <TableCell>{formatCurrency(product.unit_price)}</TableCell>
                 <TableCell>
                   <span className={product.low_stock ? "font-bold text-amber-500" : ""}>
                     {product.stock_quantity} {product.unit_of_measure}

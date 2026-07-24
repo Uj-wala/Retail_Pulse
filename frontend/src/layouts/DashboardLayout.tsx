@@ -2,6 +2,7 @@ import { Outlet } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { Menu, X } from "lucide-react";
 import { Sidebar } from "../components/layout/Sidebar";
+import { Header } from "../components/layout/Header";
 
 export function DashboardLayout() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -66,6 +67,7 @@ export function DashboardLayout() {
           }}
         />
         <div className="relative z-10">
+          <Header />
           <Outlet />
         </div>
       </main>

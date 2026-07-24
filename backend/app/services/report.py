@@ -46,7 +46,7 @@ def get_inventory_report(db: Session, company_id: str) -> dict:
     return {
         "total_products": len(products),
         "total_stock_units": sum(product.stock_quantity for product in products),
-        "inventory_value": sum(float(product.cost) * product.stock_quantity for product in products),
+        "inventory_value": sum(float(product.cost_price) * product.stock_quantity for product in products),
         "low_stock_count": low_stock_count,
         "products": [
             {

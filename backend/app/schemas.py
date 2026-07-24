@@ -1,5 +1,7 @@
 from datetime import datetime
 
+from typing import Literal
+
 from pydantic import BaseModel, EmailStr, Field, model_validator
 
 from .models import InventoryTransactionType, PaymentMethod, SalesChannel, UserRole, UserStatus
@@ -97,13 +99,13 @@ class UpdateCategoryRequest(BaseModel):
 
 
 class ProductRequest(BaseModel):
-    categoryId: str = Field(min_length=1)
+    categoryId: str = Field(min_length=1, description="Required. Every product must belong to a category.")
     sku: str = Field(min_length=1, max_length=64)
     name: str = Field(min_length=1, max_length=255)
     brand: str | None = Field(default=None, max_length=100)
     description: str | None = Field(default=None, max_length=2000)
-    price: float = Field(gt=0)
-    cost: float = Field(default=0, ge=0)
+    unitPrice: float = Field(gt=0)
+    costPrice: float = Field(default=0, ge=0)
     stockQuantity: int = Field(default=0, ge=0)
     reorderLevel: int = Field(default=10, ge=0)
     unitOfMeasure: str = Field(default="unit", min_length=1, max_length=32)
@@ -111,19 +113,19 @@ class ProductRequest(BaseModel):
 
     @model_validator(mode="after")
     def cost_within_price(self):
-        if self.cost > self.price:
+        if self.costPrice > self.unitPrice:
             raise ValueError("Cost Price cannot exceed Unit Price")
         return self
 
 
 class UpdateProductRequest(BaseModel):
-    categoryId: str | None = Field(default=None, min_length=1)
+    categoryId: str | None = Field(default=None, min_length=1, description="Every product must belong to a category.")
     sku: str | None = Field(default=None, min_length=1, max_length=64)
     name: str | None = Field(default=None, min_length=1, max_length=255)
     brand: str | None = Field(default=None, max_length=100)
     description: str | None = Field(default=None, max_length=2000)
-    price: float | None = Field(default=None, gt=0)
-    cost: float | None = Field(default=None, ge=0)
+    unitPrice: float | None = Field(default=None, gt=0)
+    costPrice: float | None = Field(default=None, ge=0)
     stockQuantity: int | None = Field(default=None, ge=0)
     reorderLevel: int | None = Field(default=None, ge=0)
     unitOfMeasure: str | None = Field(default=None, min_length=1, max_length=32)
@@ -131,7 +133,7 @@ class UpdateProductRequest(BaseModel):
 
     @model_validator(mode="after")
     def cost_within_price(self):
-        if self.cost is not None and self.price is not None and self.cost > self.price:
+        if self.costPrice is not None and self.unitPrice is not None and self.costPrice > self.unitPrice:
             raise ValueError("Cost Price cannot exceed Unit Price")
         return self
 
@@ -147,6 +149,24 @@ class InventoryTransactionRequest(BaseModel):
     note: str | None = Field(default=None, max_length=500)
 
 
+class StockAdjustmentRequest(BaseModel):
+    adjustmentType: Literal["STOCK_IN", "STOCK_OUT", "MANUAL_ADJUSTMENT"]
+    direction: Literal["INCREASE", "DECREASE"] | None = None
+    quantity: int = Field(gt=0)
+    reason: str = Field(min_length=1, max_length=500)
+    remarks: str | None = Field(default=None, max_length=1000)
+
+    @model_validator(mode="after")
+    def direction_required_for_manual_adjustment(self):
+        if self.adjustmentType == "MANUAL_ADJUSTMENT" and self.direction is None:
+            raise ValueError("Direction is required for a manual adjustment")
+        return self
+
+
+class UpdateReorderLevelRequest(BaseModel):
+    reorderLevel: int = Field(ge=0)
+
+
 class SaleItemRequest(BaseModel):
     productId: str = Field(min_length=1)
     quantity: int = Field(gt=0)
@@ -156,6 +176,8 @@ class SaleItemRequest(BaseModel):
 
 
 class SaleRequest(BaseModel):
+    # Intentionally optional: retail/POS sales support anonymous or walk-in customers who
+    # don't provide a name. See docs/API.md for the full rationale.
     customerName: str | None = Field(default=None, max_length=255)
     saleDate: datetime | None = None
     salesChannel: SalesChannel = SalesChannel.RETAIL_STORE

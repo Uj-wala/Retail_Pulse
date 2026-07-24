@@ -1,7 +1,7 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..models import AuditAction, AuditLog
+from ..models import AuditAction, AuditEntityType, AuditLog
 
 
 def list_user_activity(db: Session, company_id: str, user_id: str, limit: int = 10) -> list[AuditLog]:
@@ -22,7 +22,7 @@ def write_audit_log(
     ip_address: str | None = None,
     user_agent: str | None = None,
     details: str | None = None,
-    entity_type: str | None = None,
+    entity_type: AuditEntityType | None = None,
 ) -> None:
     db.add(
         AuditLog(

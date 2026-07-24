@@ -33,7 +33,7 @@ A multi-tenant web application. Each **company** is a tenant; its data (products
 
 ### 4.3 Catalog
 - FR-9: Managers (`ANALYST`+) can create, update, and delete categories. A category cannot be deleted while products still reference it.
-- FR-10: Managers can create, update, and delete products, each with a SKU (unique per company), price, cost, stock quantity, and reorder level.
+- FR-10: Managers can create, update, and delete products, each with a SKU (unique per company), unit price, cost price, stock quantity, and reorder level. Every product must belong to a category; category assignment is mandatory at creation and cannot be cleared on update.
 - FR-11: Any authenticated user can list and search products/categories.
 
 ### 4.4 Inventory

@@ -1,37 +1,47 @@
 import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import { Card } from "../common/Card";
-import { formatCurrency } from "../../services/formatters";
 import { chartTooltipItemStyle, chartTooltipLabelStyle, chartTooltipStyle } from "../../services/chartTheme";
-import type { CategoryRevenue } from "../../types";
+import type { InventoryCharts, StockStatus } from "../../types";
 
-const COLORS = ["#14B8A6", "#1D4ED8", "#38BDF8", "#A78BFA", "#FB7185", "#34D399"];
+const STATUS_COLORS: Record<StockStatus, string> = {
+  IN_STOCK: "#34D399",
+  LOW_STOCK: "#F59E0B",
+  OUT_OF_STOCK: "#F87171",
+};
 
-export function CategoryBreakdownChart({ data }: { data: CategoryRevenue[] }) {
+const STATUS_LABELS: Record<StockStatus, string> = {
+  IN_STOCK: "In Stock",
+  LOW_STOCK: "Low Stock",
+  OUT_OF_STOCK: "Out of Stock",
+};
+
+export function StockStatusChart({ data }: { data: InventoryCharts["byStatus"] }) {
+  const chartData = data.map((entry) => ({ ...entry, label: STATUS_LABELS[entry.status] }));
+
   return (
     <Card className="p-5">
-      <p className="mb-4 text-sm font-semibold text-content-muted">Revenue by Category</p>
-      {data.length === 0 ? (
-        <p className="py-8 text-center text-sm text-content-muted">No sales yet</p>
+      <p className="mb-4 text-sm font-semibold text-content-muted">Stock Status Distribution</p>
+      {chartData.length === 0 ? (
+        <p className="py-8 text-center text-sm text-content-muted">No inventory yet</p>
       ) : (
         <div className="h-64">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
-                data={data}
-                dataKey="revenue"
-                nameKey="category"
+                data={chartData}
+                dataKey="count"
+                nameKey="label"
                 innerRadius={55}
                 outerRadius={85}
                 paddingAngle={2}
                 isAnimationActive
                 animationDuration={1200}
               >
-                {data.map((entry, index) => (
-                  <Cell key={entry.category} fill={COLORS[index % COLORS.length]} />
+                {chartData.map((entry) => (
+                  <Cell key={entry.status} fill={STATUS_COLORS[entry.status]} />
                 ))}
               </Pie>
               <Tooltip
-                formatter={(value: number) => formatCurrency(value)}
                 contentStyle={chartTooltipStyle}
                 labelStyle={chartTooltipLabelStyle}
                 itemStyle={chartTooltipItemStyle}

@@ -2,14 +2,17 @@ from fastapi import HTTPException
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, joinedload
 
-from ..models import AuditAction, Category, InventoryTransaction, Product, SaleItem
+from ..models import AuditAction, AuditEntityType, Category, Inventory, InventoryMovement, Product, SaleItem
 from ..schemas import ProductRequest, ProductStatusRequest, UpdateProductRequest
 from .audit import write_audit_log
+from .inventory import get_or_create_inventory
 
-ENTITY_TYPE = "PRODUCT"
+ENTITY_TYPE = AuditEntityType.PRODUCT
 
 FIELD_MAP = {
     "categoryId": "category_id",
+    "unitPrice": "unit_price",
+    "costPrice": "cost_price",
     "stockQuantity": "stock_quantity",
     "reorderLevel": "reorder_level",
     "unitOfMeasure": "unit_of_measure",
@@ -19,8 +22,8 @@ FIELD_MAP = {
 SORT_MAP = {
     "name": Product.name.asc(),
     "-name": Product.name.desc(),
-    "price": Product.price.asc(),
-    "-price": Product.price.desc(),
+    "unitPrice": Product.unit_price.asc(),
+    "-unitPrice": Product.unit_price.desc(),
     "recent": Product.created_at.desc(),
 }
 
@@ -101,8 +104,8 @@ def create_product(db: Session, company_id: str, user_id: str, payload: ProductR
         name=payload.name.strip(),
         brand=payload.brand.strip() if payload.brand else None,
         description=payload.description.strip() if payload.description else None,
-        price=payload.price,
-        cost=payload.cost,
+        unit_price=payload.unitPrice,
+        cost_price=payload.costPrice,
         stock_quantity=payload.stockQuantity,
         reorder_level=payload.reorderLevel,
         unit_of_measure=payload.unitOfMeasure.strip(),
@@ -110,6 +113,7 @@ def create_product(db: Session, company_id: str, user_id: str, payload: ProductR
     )
     db.add(product)
     db.flush()
+    get_or_create_inventory(db, company_id, product)
     write_audit_log(db, AuditAction.PRODUCT_CREATED, company_id, user_id, details=product.name, entity_type=ENTITY_TYPE)
     db.commit()
     return get_product(db, company_id, product.id)
@@ -121,8 +125,8 @@ def update_product(db: Session, company_id: str, user_id: str, product_id: str, 
 
     new_category_id = data.get("categoryId", product.category_id)
     new_name = data.get("name", product.name)
-    new_price = data.get("price", float(product.price))
-    new_cost = data.get("cost", float(product.cost))
+    new_price = data.get("unitPrice", float(product.unit_price))
+    new_cost = data.get("costPrice", float(product.cost_price))
 
     if new_cost > new_price:
         raise HTTPException(422, "Cost Price cannot exceed Unit Price")
@@ -172,16 +176,19 @@ def delete_product(db: Session, company_id: str, user_id: str, product_id: str) 
         .join(Product, Product.id == SaleItem.product_id)
         .where(Product.id == product_id, Product.company_id == company_id)
     )
-    transaction_count = db.scalar(
-        select(func.count(InventoryTransaction.id)).where(
-            InventoryTransaction.product_id == product_id,
-            InventoryTransaction.company_id == company_id,
-        )
+    movement_count = db.scalar(
+        select(func.count(InventoryMovement.id))
+        .select_from(InventoryMovement)
+        .join(Inventory, Inventory.id == InventoryMovement.inventory_id)
+        .where(Inventory.product_id == product_id, Inventory.company_id == company_id)
     )
-    if historical_count or transaction_count:
+    if historical_count or movement_count:
         raise HTTPException(409, "Cannot delete a product with sales or inventory history. Deactivate it instead.")
 
     name = product.name
+    inventory = db.scalar(select(Inventory).where(Inventory.product_id == product_id))
+    if inventory:
+        db.delete(inventory)
     db.delete(product)
     write_audit_log(db, AuditAction.PRODUCT_DELETED, company_id, user_id, details=name, entity_type=ENTITY_TYPE)
     db.commit()

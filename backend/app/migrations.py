@@ -1,3 +1,5 @@
+import uuid
+
 from sqlalchemy import text
 from sqlalchemy.engine import Engine
 
@@ -57,6 +59,148 @@ def ensure_sales_schema(engine: Engine) -> None:
         "ALTER TABLE sale_items ALTER COLUMN total SET NOT NULL",
         "CREATE UNIQUE INDEX IF NOT EXISTS ux_sales_company_invoice_number ON sales(company_id, invoice_number)",
         "CREATE INDEX IF NOT EXISTS ix_sales_company_id_sale_date ON sales(company_id, sale_date)",
+    ]
+
+    with engine.begin() as connection:
+        for statement in statements:
+            connection.execute(text(statement))
+
+
+def ensure_product_schema(engine: Engine) -> None:
+    if engine.dialect.name != "postgresql":
+        return
+
+    rename_statements = [
+        """
+        DO $$ BEGIN
+            IF EXISTS (
+                SELECT 1 FROM information_schema.columns
+                WHERE table_name = 'products' AND column_name = 'price'
+            ) THEN
+                ALTER TABLE products RENAME COLUMN price TO unit_price;
+            END IF;
+        END $$
+        """,
+        """
+        DO $$ BEGIN
+            IF EXISTS (
+                SELECT 1 FROM information_schema.columns
+                WHERE table_name = 'products' AND column_name = 'cost'
+            ) THEN
+                ALTER TABLE products RENAME COLUMN cost TO cost_price;
+            END IF;
+        END $$
+        """,
+    ]
+
+    with engine.begin() as connection:
+        for statement in rename_statements:
+            connection.execute(text(statement))
+
+        orphan_company_ids = connection.execute(
+            text("SELECT DISTINCT company_id FROM products WHERE category_id IS NULL")
+        ).scalars().all()
+
+        for company_id in orphan_company_ids:
+            category_id = connection.execute(
+                text("SELECT id FROM categories WHERE company_id = :company_id AND name = 'Uncategorized'"),
+                {"company_id": company_id},
+            ).scalar()
+
+            if not category_id:
+                category_id = str(uuid.uuid4())
+                connection.execute(
+                    text(
+                        """
+                        INSERT INTO categories (id, company_id, name, description, is_active, created_at, updated_at)
+                        VALUES (:id, :company_id, 'Uncategorized', NULL, true, now(), now())
+                        """
+                    ),
+                    {"id": category_id, "company_id": company_id},
+                )
+
+            connection.execute(
+                text(
+                    "UPDATE products SET category_id = :category_id "
+                    "WHERE company_id = :company_id AND category_id IS NULL"
+                ),
+                {"category_id": category_id, "company_id": company_id},
+            )
+
+        connection.execute(text("ALTER TABLE products ALTER COLUMN category_id SET NOT NULL"))
+
+
+def ensure_inventory_schema(engine: Engine) -> None:
+    if engine.dialect.name != "postgresql":
+        return
+
+    audit_action_statements = [
+        'ALTER TYPE "AuditAction" ADD VALUE IF NOT EXISTS \'STOCK_ADDED\'',
+        'ALTER TYPE "AuditAction" ADD VALUE IF NOT EXISTS \'STOCK_REMOVED\'',
+        'ALTER TYPE "AuditAction" ADD VALUE IF NOT EXISTS \'STOCK_ADJUSTED\'',
+        'ALTER TYPE "AuditAction" ADD VALUE IF NOT EXISTS \'REORDER_LEVEL_UPDATED\'',
+        'ALTER TYPE "AuditAction" ADD VALUE IF NOT EXISTS \'PRODUCT_LOW_STOCK\'',
+        'ALTER TYPE "AuditAction" ADD VALUE IF NOT EXISTS \'PRODUCT_OUT_OF_STOCK\'',
+    ]
+
+    # ALTER TYPE ... ADD VALUE cannot run inside the same transaction as a later
+    # statement that uses the new value, but backfilling below doesn't reference
+    # these values, so a single connection.begin() per statement is unnecessary here.
+    with engine.begin() as connection:
+        for statement in audit_action_statements:
+            connection.execute(text(statement))
+
+    with engine.begin() as connection:
+        missing = connection.execute(
+            text(
+                """
+                SELECT p.id, p.company_id, p.stock_quantity, p.reorder_level
+                FROM products p
+                LEFT JOIN inventory i ON i.product_id = p.id
+                WHERE i.id IS NULL
+                """
+            )
+        ).all()
+
+        for product_id, company_id, stock_quantity, reorder_level in missing:
+            if stock_quantity <= 0:
+                stock_status = "OUT_OF_STOCK"
+            elif stock_quantity <= reorder_level:
+                stock_status = "LOW_STOCK"
+            else:
+                stock_status = "IN_STOCK"
+
+            connection.execute(
+                text(
+                    """
+                    INSERT INTO inventory (id, company_id, product_id, current_stock, reserved_stock, available_stock, reorder_level, stock_status, updated_at)
+                    VALUES (:id, :company_id, :product_id, :stock, 0, :stock, :reorder_level, :status, now())
+                    """
+                ),
+                {
+                    "id": str(uuid.uuid4()),
+                    "company_id": company_id,
+                    "product_id": product_id,
+                    "stock": stock_quantity,
+                    "reorder_level": reorder_level,
+                    "status": stock_status,
+                },
+            )
+
+
+def ensure_audit_log_schema(engine: Engine) -> None:
+    if engine.dialect.name != "postgresql":
+        return
+
+    statements = [
+        """
+        DO $$ BEGIN
+            CREATE TYPE "AuditEntityType" AS ENUM (
+                'COMPANY', 'USER', 'CATEGORY', 'PRODUCT', 'INVENTORY', 'SALE', 'REPORT'
+            );
+        EXCEPTION WHEN duplicate_object THEN NULL; END $$
+        """,
+        'ALTER TABLE audit_logs ALTER COLUMN entity_type TYPE "AuditEntityType" USING entity_type::text::"AuditEntityType"',
     ]
 
     with engine.begin() as connection:

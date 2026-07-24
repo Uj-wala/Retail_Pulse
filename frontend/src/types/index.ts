@@ -1,6 +1,9 @@
 export type UserRole = "SUPER_ADMIN" | "COMPANY_ADMIN" | "ANALYST" | "VIEWER";
 export type UserStatus = "ACTIVE" | "INACTIVE" | "SUSPENDED";
-export type InventoryTransactionType = "RESTOCK" | "SALE" | "ADJUSTMENT" | "RETURN";
+export type StockStatus = "IN_STOCK" | "LOW_STOCK" | "OUT_OF_STOCK";
+export type InventoryMovementType = "SALE" | "MANUAL_ADJUSTMENT" | "STOCK_ADDITION" | "STOCK_REMOVAL";
+export type StockAdjustmentType = "STOCK_IN" | "STOCK_OUT" | "MANUAL_ADJUSTMENT";
+export type AdjustmentDirection = "INCREASE" | "DECREASE";
 export type SaleStatus = "COMPLETED" | "REFUNDED" | "CANCELLED";
 export type SalesChannel = "RETAIL_STORE" | "ONLINE_STORE" | "MARKETPLACE";
 export type PaymentMethod = "CASH" | "CARD" | "UPI" | "BANK_TRANSFER";
@@ -39,10 +42,12 @@ export interface ProfileResponse {
   company: Company;
 }
 
+export type AuditEntityType = "COMPANY" | "USER" | "CATEGORY" | "PRODUCT" | "INVENTORY" | "SALE" | "REPORT";
+
 export interface ActivityLogEntry {
   id: string;
   action: string;
-  entity_type: string | null;
+  entity_type: AuditEntityType | null;
   details: string | null;
   created_at: string;
 }
@@ -61,14 +66,14 @@ export interface Category {
 export interface Product {
   id: string;
   company_id: string;
-  category_id: string | null;
+  category_id: string;
   category_name: string | null;
   sku: string;
   name: string;
   brand: string | null;
   description: string | null;
-  price: number;
-  cost: number;
+  unit_price: number;
+  cost_price: number;
   stock_quantity: number;
   reorder_level: number;
   unit_of_measure: string;
@@ -78,13 +83,57 @@ export interface Product {
   updated_at: string;
 }
 
-export interface InventoryTransaction {
+export interface Inventory {
   id: string;
+  company_id: string;
   product_id: string;
   product_name: string | null;
-  type: InventoryTransactionType;
-  quantity: number;
-  note: string | null;
+  sku: string | null;
+  category_id: string | null;
+  category_name: string | null;
+  brand: string | null;
+  current_stock: number;
+  reserved_stock: number;
+  available_stock: number;
+  reorder_level: number;
+  stock_status: StockStatus;
+  updated_at: string;
+}
+
+export interface InventoryMovement {
+  id: string;
+  inventory_id: string;
+  product_id: string | null;
+  product_name: string | null;
+  movement_type: InventoryMovementType;
+  quantity_changed: number;
+  previous_quantity: number;
+  updated_quantity: number;
+  reason: string;
+  remarks: string | null;
+  performed_by: string | null;
+  performed_by_name: string | null;
+  created_at: string;
+}
+
+export interface InventorySummary {
+  totalProducts: number;
+  totalInventoryQuantity: number;
+  lowStockProducts: number;
+  outOfStockProducts: number;
+}
+
+export interface InventoryCharts {
+  byCategory: { category: string; totalStock: number }[];
+  byStatus: { status: StockStatus; count: number }[];
+}
+
+export interface Notification {
+  id: string;
+  product_id: string | null;
+  product_name: string | null;
+  title: string;
+  message: string;
   created_at: string;
 }
 

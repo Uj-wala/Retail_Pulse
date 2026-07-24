@@ -56,6 +56,12 @@ class AuditAction(str, enum.Enum):
     SALE_REFUNDED = "SALE_REFUNDED"
     PRODUCT_MARKED_OUT_OF_STOCK = "PRODUCT_MARKED_OUT_OF_STOCK"
     COMPANY_UPDATED = "COMPANY_UPDATED"
+    STOCK_ADDED = "STOCK_ADDED"
+    STOCK_REMOVED = "STOCK_REMOVED"
+    STOCK_ADJUSTED = "STOCK_ADJUSTED"
+    REORDER_LEVEL_UPDATED = "REORDER_LEVEL_UPDATED"
+    PRODUCT_LOW_STOCK = "PRODUCT_LOW_STOCK"
+    PRODUCT_OUT_OF_STOCK = "PRODUCT_OUT_OF_STOCK"
 
 
 class InventoryTransactionType(str, enum.Enum):
@@ -63,6 +69,19 @@ class InventoryTransactionType(str, enum.Enum):
     SALE = "SALE"
     ADJUSTMENT = "ADJUSTMENT"
     RETURN = "RETURN"
+
+
+class StockStatus(str, enum.Enum):
+    IN_STOCK = "IN_STOCK"
+    LOW_STOCK = "LOW_STOCK"
+    OUT_OF_STOCK = "OUT_OF_STOCK"
+
+
+class InventoryMovementType(str, enum.Enum):
+    SALE = "SALE"
+    MANUAL_ADJUSTMENT = "MANUAL_ADJUSTMENT"
+    STOCK_ADDITION = "STOCK_ADDITION"
+    STOCK_REMOVAL = "STOCK_REMOVAL"
 
 
 class SaleStatus(str, enum.Enum):
@@ -82,6 +101,16 @@ class PaymentMethod(str, enum.Enum):
     CARD = "CARD"
     UPI = "UPI"
     BANK_TRANSFER = "BANK_TRANSFER"
+
+
+class AuditEntityType(str, enum.Enum):
+    COMPANY = "COMPANY"
+    USER = "USER"
+    CATEGORY = "CATEGORY"
+    PRODUCT = "PRODUCT"
+    INVENTORY = "INVENTORY"
+    SALE = "SALE"
+    REPORT = "REPORT"
 
 
 class Company(Base):
@@ -172,13 +201,13 @@ class Product(Base):
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=uuid_str)
     company_id: Mapped[str] = mapped_column(String, ForeignKey("companies.id"), nullable=False)
-    category_id: Mapped[str | None] = mapped_column(String, ForeignKey("categories.id"), nullable=True)
+    category_id: Mapped[str] = mapped_column(String, ForeignKey("categories.id"), nullable=False)
     sku: Mapped[str] = mapped_column(String, nullable=False)
     name: Mapped[str] = mapped_column(String, nullable=False)
     brand: Mapped[str | None] = mapped_column(String, nullable=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    price: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
-    cost: Mapped[float] = mapped_column(Numeric(12, 2), default=0, nullable=False)
+    unit_price: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
+    cost_price: Mapped[float] = mapped_column(Numeric(12, 2), default=0, nullable=False)
     stock_quantity: Mapped[int] = mapped_column(default=0, nullable=False)
     reorder_level: Mapped[int] = mapped_column(default=10, nullable=False)
     unit_of_measure: Mapped[str] = mapped_column(String, default="unit", nullable=False)
@@ -186,7 +215,7 @@ class Product(Base):
     created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
-    category: Mapped[Category | None] = relationship()
+    category: Mapped[Category] = relationship()
 
 
 class InventoryTransaction(Base):
@@ -209,6 +238,46 @@ class InventoryTransaction(Base):
     user: Mapped[User | None] = relationship()
 
 
+class Inventory(Base):
+    __tablename__ = "inventory"
+    __table_args__ = (
+        UniqueConstraint("product_id"),
+        Index("ix_inventory_company_id_stock_status", "company_id", "stock_status"),
+    )
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=uuid_str)
+    company_id: Mapped[str] = mapped_column(String, ForeignKey("companies.id"), nullable=False)
+    product_id: Mapped[str] = mapped_column(String, ForeignKey("products.id"), nullable=False)
+    current_stock: Mapped[int] = mapped_column(default=0, nullable=False)
+    reserved_stock: Mapped[int] = mapped_column(default=0, nullable=False)
+    available_stock: Mapped[int] = mapped_column(default=0, nullable=False)
+    reorder_level: Mapped[int] = mapped_column(default=10, nullable=False)
+    stock_status: Mapped[StockStatus] = mapped_column(Enum(StockStatus, name="StockStatus"), default=StockStatus.OUT_OF_STOCK, nullable=False)
+    updated_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+    product: Mapped[Product] = relationship()
+    movements: Mapped[list["InventoryMovement"]] = relationship(back_populates="inventory", cascade="all, delete-orphan")
+
+
+class InventoryMovement(Base):
+    __tablename__ = "inventory_movements"
+    __table_args__ = (Index("ix_inventory_movements_inventory_id_created_at", "inventory_id", "created_at"),)
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=uuid_str)
+    inventory_id: Mapped[str] = mapped_column(String, ForeignKey("inventory.id"), nullable=False)
+    movement_type: Mapped[InventoryMovementType] = mapped_column(Enum(InventoryMovementType, name="InventoryMovementType"), nullable=False)
+    quantity_changed: Mapped[int] = mapped_column(nullable=False)
+    previous_quantity: Mapped[int] = mapped_column(nullable=False)
+    updated_quantity: Mapped[int] = mapped_column(nullable=False)
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+    remarks: Mapped[str | None] = mapped_column(Text, nullable=True)
+    performed_by: Mapped[str | None] = mapped_column(String, ForeignKey("users.id"), nullable=True)
+    created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    inventory: Mapped[Inventory] = relationship(back_populates="movements")
+    performer: Mapped[User | None] = relationship()
+
+
 class Sale(Base):
     __tablename__ = "sales"
     __table_args__ = (
@@ -221,6 +290,7 @@ class Sale(Base):
     company_id: Mapped[str] = mapped_column(String, ForeignKey("companies.id"), nullable=False)
     user_id: Mapped[str] = mapped_column(String, ForeignKey("users.id"), nullable=False)
     invoice_number: Mapped[str] = mapped_column(String, nullable=False)
+    # Intentionally optional: supports anonymous/walk-in retail customers who don't provide a name.
     customer_name: Mapped[str | None] = mapped_column(String, nullable=True)
     sale_date: Mapped[DateTime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
     sales_channel: Mapped[SalesChannel] = mapped_column(Enum(SalesChannel, name="SalesChannel"), nullable=False)
@@ -278,7 +348,7 @@ class AuditLog(Base):
     company_id: Mapped[str | None] = mapped_column(String, ForeignKey("companies.id"), nullable=True)
     user_id: Mapped[str | None] = mapped_column(String, ForeignKey("users.id"), nullable=True)
     action: Mapped[AuditAction] = mapped_column(Enum(AuditAction, name="AuditAction"), nullable=False)
-    entity_type: Mapped[str | None] = mapped_column(String, nullable=True)
+    entity_type: Mapped[AuditEntityType | None] = mapped_column(Enum(AuditEntityType, name="AuditEntityType"), nullable=True)
     details: Mapped[str | None] = mapped_column(String, nullable=True)
     ip_address: Mapped[str | None] = mapped_column(String, nullable=True)
     user_agent: Mapped[str | None] = mapped_column(String, nullable=True)

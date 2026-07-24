@@ -7,8 +7,8 @@ export interface ProductPayload {
   name: string;
   brand?: string;
   description?: string;
-  price: number;
-  cost: number;
+  unitPrice: number;
+  costPrice: number;
   stockQuantity: number;
   reorderLevel: number;
   unitOfMeasure: string;
@@ -20,7 +20,7 @@ export interface ProductFilters {
   categoryId?: string;
   isActive?: boolean;
   brand?: string;
-  sort?: "name" | "-name" | "price" | "-price" | "recent";
+  sort?: "name" | "-name" | "unitPrice" | "-unitPrice" | "recent";
   page?: number;
   pageSize?: number;
 }
