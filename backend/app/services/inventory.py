@@ -49,7 +49,9 @@ def _compute_status(available_stock: int, reorder_level: int) -> StockStatus:
 
 
 def get_or_create_inventory(db: Session, company_id: str, product: Product) -> Inventory:
-    inventory = db.scalar(select(Inventory).where(Inventory.product_id == product.id))
+    inventory = db.scalar(
+        select(Inventory).where(Inventory.product_id == product.id, Inventory.company_id == company_id)
+    )
     if inventory:
         return inventory
 

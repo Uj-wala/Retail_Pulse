@@ -43,6 +43,7 @@ export function InviteUserModal({ open, onClose, onSubmit, isSubmitting }: Invit
           <option value="VIEWER">Viewer</option>
           <option value="ANALYST">Analyst</option>
           <option value="COMPANY_ADMIN">Company Admin</option>
+          <option value="SUPER_ADMIN">Super Admin</option>
         </FormSelect>
 
         <div className="mt-2 flex justify-end gap-2">

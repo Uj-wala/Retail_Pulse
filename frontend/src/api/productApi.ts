@@ -51,4 +51,6 @@ export const productApi = {
   deleteProduct: (id: string) => axiosClient.delete(`/products/${id}`),
 
   listLowStock: () => axiosClient.get<{ products: Product[] }>("/products/low-stock").then((res) => res.data),
+
+  listBrands: () => axiosClient.get<{ brands: string[] }>("/products/brands").then((res) => res.data),
 };

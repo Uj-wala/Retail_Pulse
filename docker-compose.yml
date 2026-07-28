@@ -24,7 +24,7 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: postgresql://retailpulse:retailpulse@postgres:5432/retailpulse
-      JWT_SECRET: ${JWT_SECRET:-dev-secret-key-change-me}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set (see backend/.env.example)}
       ACCESS_TOKEN_EXPIRE_MINUTES: 20
       REFRESH_TOKEN_EXPIRE_DAYS: 7
       CORS_ORIGINS: http://localhost:5173

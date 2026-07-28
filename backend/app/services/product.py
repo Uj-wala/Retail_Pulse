@@ -186,12 +186,24 @@ def delete_product(db: Session, company_id: str, user_id: str, product_id: str) 
         raise HTTPException(409, "Cannot delete a product with sales or inventory history. Deactivate it instead.")
 
     name = product.name
-    inventory = db.scalar(select(Inventory).where(Inventory.product_id == product_id))
+    inventory = db.scalar(
+        select(Inventory).where(Inventory.product_id == product_id, Inventory.company_id == company_id)
+    )
     if inventory:
         db.delete(inventory)
     db.delete(product)
     write_audit_log(db, AuditAction.PRODUCT_DELETED, company_id, user_id, details=name, entity_type=ENTITY_TYPE)
     db.commit()
+
+
+def list_brands(db: Session, company_id: str) -> list[str]:
+    stmt = (
+        select(Product.brand)
+        .where(Product.company_id == company_id, Product.brand.is_not(None), Product.brand != "")
+        .distinct()
+        .order_by(Product.brand.asc())
+    )
+    return list(db.scalars(stmt).all())
 
 
 def low_stock_products(db: Session, company_id: str) -> list[Product]:

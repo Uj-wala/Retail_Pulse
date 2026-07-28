@@ -50,6 +50,15 @@ def list_low_stock(current_user: User = Depends(get_current_user), db: Session =
     return {"products": [serialize_product(p) for p in products]}
 
 
+@router.get(
+    "/brands",
+    summary="List distinct brands in use for the company",
+    description="Returns the sorted set of distinct, non-empty brand values across the company's products, for populating brand filter dropdowns.",
+)
+def list_brands(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    return {"brands": product_service.list_brands(db, current_user.company_id)}
+
+
 @router.get("/{product_id}", summary="Get a product by id")
 def get_product(product_id: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     product = product_service.get_product(db, current_user.company_id, product_id)

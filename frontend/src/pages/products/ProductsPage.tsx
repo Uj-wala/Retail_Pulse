@@ -22,6 +22,12 @@ import type { ProductFormValues } from "./productSchema";
 const MANAGER_ROLES = ["COMPANY_ADMIN", "SUPER_ADMIN"];
 const PAGE_SIZE = 10;
 
+function sortDirFor(sort: string | undefined, field: string): "asc" | "desc" | undefined {
+  if (sort === field) return "asc";
+  if (sort === `-${field}`) return "desc";
+  return undefined;
+}
+
 function getApiErrorMessage(error: unknown, fallback: string): string {
   if (!isAxiosError(error)) return fallback;
   if (!error.response) {
@@ -87,13 +93,28 @@ export function ProductsPage() {
     queryKey: ["categories", { pageSize: 200 }],
     queryFn: () => categoryApi.listCategories({ pageSize: 200 }),
   });
+  const brandsQuery = useQuery({
+    queryKey: ["product-brands"],
+    queryFn: () => productApi.listBrands(),
+  });
+
+  // Product changes ripple into the Inventory module (a new/updated/deleted product changes
+  // its Inventory row, the summary counts, the by-category/by-status charts, and the brand list),
+  // so every mutation below invalidates those caches alongside the Products-page ones.
+  const invalidateProductAndInventoryQueries = () => {
+    queryClient.invalidateQueries({ queryKey: ["products"] });
+    queryClient.invalidateQueries({ queryKey: ["categories"] });
+    queryClient.invalidateQueries({ queryKey: ["analytics", "summary"] });
+    queryClient.invalidateQueries({ queryKey: ["inventory"] });
+    queryClient.invalidateQueries({ queryKey: ["inventory-summary"] });
+    queryClient.invalidateQueries({ queryKey: ["inventory-charts"] });
+    queryClient.invalidateQueries({ queryKey: ["product-brands"] });
+  };
 
   const createMutation = useMutation({
     mutationFn: productApi.createProduct,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["products"] });
-      queryClient.invalidateQueries({ queryKey: ["categories"] });
-      queryClient.invalidateQueries({ queryKey: ["analytics", "summary"] });
+      invalidateProductAndInventoryQueries();
       notify("Product created");
       setFormOpen(false);
     },
@@ -106,9 +127,7 @@ export function ProductsPage() {
     mutationFn: ({ id, payload }: { id: string; payload: ProductPayload }) =>
       productApi.updateProduct(id, payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["products"] });
-      queryClient.invalidateQueries({ queryKey: ["categories"] });
-      queryClient.invalidateQueries({ queryKey: ["analytics", "summary"] });
+      invalidateProductAndInventoryQueries();
       notify("Product updated");
       setFormOpen(false);
       setEditing(null);
@@ -121,8 +140,7 @@ export function ProductsPage() {
   const statusMutation = useMutation({
     mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) => productApi.setProductStatus(id, isActive),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["products"] });
-      queryClient.invalidateQueries({ queryKey: ["analytics", "summary"] });
+      invalidateProductAndInventoryQueries();
       notify(variables.isActive ? "Product activated" : "Product deactivated");
     },
     onError: (error) => {
@@ -133,9 +151,7 @@ export function ProductsPage() {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => productApi.deleteProduct(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["products"] });
-      queryClient.invalidateQueries({ queryKey: ["categories"] });
-      queryClient.invalidateQueries({ queryKey: ["analytics", "summary"] });
+      invalidateProductAndInventoryQueries();
       notify("Product deleted");
       setDeleting(null);
     },
@@ -147,6 +163,7 @@ export function ProductsPage() {
 
   const products = productsQuery.data?.products ?? [];
   const categories = categoriesQuery.data?.categories ?? [];
+  const brands = brandsQuery.data?.brands ?? [];
 
   return (
     <div>
@@ -208,15 +225,21 @@ export function ProductsPage() {
           <option value="active">Active</option>
           <option value="inactive">Inactive</option>
         </select>
-        <input
+        <select
           value={brand}
           onChange={(event) => {
             setBrand(event.target.value);
             setPage(1);
           }}
-          placeholder="Filter by brand"
-          className="w-full rounded-lg border border-border/25 bg-surface px-3 py-2.5 text-sm outline-none focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/20 sm:w-40"
-        />
+          className="rounded-lg border border-border/25 bg-surface px-3 py-2.5 text-sm outline-none focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/20"
+        >
+          <option value="">All Brands</option>
+          {brands.map((brandName) => (
+            <option key={brandName} value={brandName}>
+              {brandName}
+            </option>
+          ))}
+        </select>
         <select
           value={sort}
           onChange={(event) => {
@@ -244,10 +267,10 @@ export function ProductsPage() {
           <TableHead>
             <tr>
               <TableHeaderCell>SKU</TableHeaderCell>
-              <TableHeaderCell>Name</TableHeaderCell>
+              <TableHeaderCell sortDirection={sortDirFor(sort, "name")}>Name</TableHeaderCell>
               <TableHeaderCell>Category</TableHeaderCell>
               <TableHeaderCell>Brand</TableHeaderCell>
-              <TableHeaderCell>Price</TableHeaderCell>
+              <TableHeaderCell sortDirection={sortDirFor(sort, "unitPrice")}>Price</TableHeaderCell>
               <TableHeaderCell>Stock</TableHeaderCell>
               <TableHeaderCell>Status</TableHeaderCell>
               <TableHeaderCell className="text-right">Actions</TableHeaderCell>

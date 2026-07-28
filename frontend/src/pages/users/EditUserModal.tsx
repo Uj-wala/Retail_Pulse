@@ -27,6 +27,7 @@ export function EditUserModal({ open, onClose, onSubmit, isSubmitting, user }: E
           <option value="VIEWER">Viewer</option>
           <option value="ANALYST">Analyst</option>
           <option value="COMPANY_ADMIN">Company Admin</option>
+          <option value="SUPER_ADMIN">Super Admin</option>
         </FormSelect>
         <FormSelect name="status" control={control} label="Status">
           <option value="ACTIVE">Active</option>

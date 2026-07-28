@@ -5,7 +5,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     database_url: str
-    jwt_secret: str = "dev-secret-key-change-me"
+    jwt_secret: str
     access_token_expire_minutes: int = 20
     refresh_token_expire_days: int = 7
     cors_origins: str = "http://localhost:5173"

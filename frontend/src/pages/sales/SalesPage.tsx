@@ -7,13 +7,14 @@ import { productApi } from "../../api/productApi";
 import { categoryApi } from "../../api/categoryApi";
 import { Button } from "../../components/common/Button";
 import { EmptyState } from "../../components/common/EmptyState";
+import { ErrorState } from "../../components/common/ErrorState";
 import { Spinner } from "../../components/common/Spinner";
 import { Badge } from "../../components/common/Badge";
-import { Card } from "../../components/common/Card";
 import { ConfirmDialog } from "../../components/common/ConfirmDialog";
 import { Drawer } from "../../components/common/Drawer";
 import { Pagination } from "../../components/common/Pagination";
 import { Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } from "../../components/tables/Table";
+import { StatCard, StatCardSkeleton } from "../../components/dashboard/StatCard";
 import { formatCurrency, formatDateTime } from "../../services/formatters";
 import { useAuth } from "../../hooks/useAuth";
 import { useNotification } from "../../hooks/useNotification";
@@ -36,6 +37,12 @@ const paymentLabels: Record<PaymentMethod, string> = {
   UPI: "UPI",
   BANK_TRANSFER: "Bank Transfer",
 };
+
+function sortDirFor(sort: string | undefined, field: string): "asc" | "desc" | undefined {
+  if (sort === field) return "asc";
+  if (sort === `-${field}`) return "desc";
+  return undefined;
+}
 
 function getApiErrorMessage(error: unknown, fallback: string): string {
   if (!isAxiosError(error)) return fallback;
@@ -233,12 +240,29 @@ export function SalesPage() {
         )}
       </div>
 
-      <div className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <Card className="p-4"><div className="flex items-center justify-between"><div><p className="text-xs text-content-muted">Total Sales</p><p className="text-xl font-extrabold">{formatCurrency(summary?.totalSales ?? 0)}</p></div><Banknote className="h-5 w-5 text-brand-teal" /></div></Card>
-        <Card className="p-4"><div className="flex items-center justify-between"><div><p className="text-xs text-content-muted">Total Revenue</p><p className="text-xl font-extrabold">{formatCurrency(summary?.totalRevenue ?? 0)}</p></div><CreditCard className="h-5 w-5 text-brand-teal" /></div></Card>
-        <Card className="p-4"><div className="flex items-center justify-between"><div><p className="text-xs text-content-muted">Total Orders</p><p className="text-xl font-extrabold">{summary?.totalOrders ?? 0}</p></div><ShoppingCart className="h-5 w-5 text-brand-teal" /></div></Card>
-        <Card className="p-4"><div className="flex items-center justify-between"><div><p className="text-xs text-content-muted">Average Order Value</p><p className="text-xl font-extrabold">{formatCurrency(summary?.averageOrderValue ?? 0)}</p></div><ReceiptText className="h-5 w-5 text-brand-teal" /></div></Card>
-      </div>
+      {summaryQuery.isLoading ? (
+        <div className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <StatCardSkeleton />
+          <StatCardSkeleton />
+          <StatCardSkeleton />
+          <StatCardSkeleton />
+        </div>
+      ) : summaryQuery.isError ? (
+        <div className="mb-5">
+          <ErrorState
+            title="Couldn't load sales summary"
+            description={getApiErrorMessage(summaryQuery.error, "Please try again.")}
+            onRetry={() => summaryQuery.refetch()}
+          />
+        </div>
+      ) : (
+        <div className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <StatCard label="Total Sales" value={formatCurrency(summary!.totalSales)} icon={<Banknote className="h-5 w-5" />} />
+          <StatCard label="Total Revenue" value={formatCurrency(summary!.totalRevenue)} icon={<CreditCard className="h-5 w-5" />} />
+          <StatCard label="Total Orders" value={String(summary!.totalOrders)} icon={<ShoppingCart className="h-5 w-5" />} />
+          <StatCard label="Average Order Value" value={formatCurrency(summary!.averageOrderValue)} icon={<ReceiptText className="h-5 w-5" />} />
+        </div>
+      )}
 
       <div className="mb-4 grid gap-3 lg:grid-cols-[minmax(220px,1fr)_repeat(5,minmax(130px,auto))]">
         <div className="relative min-w-0">
@@ -292,14 +316,14 @@ export function SalesPage() {
         <Table>
           <TableHead>
             <tr>
-              <TableHeaderCell>Invoice</TableHeaderCell>
+              <TableHeaderCell sortDirection={sortDirFor(sort, "invoiceNumber")}>Invoice</TableHeaderCell>
               <TableHeaderCell>Customer</TableHeaderCell>
               <TableHeaderCell>Product</TableHeaderCell>
               <TableHeaderCell>Channel</TableHeaderCell>
               <TableHeaderCell>Payment</TableHeaderCell>
-              <TableHeaderCell>Total</TableHeaderCell>
+              <TableHeaderCell sortDirection={sortDirFor(sort, "totalAmount")}>Total</TableHeaderCell>
               <TableHeaderCell>Status</TableHeaderCell>
-              <TableHeaderCell>Date</TableHeaderCell>
+              <TableHeaderCell sortDirection={sortDirFor(sort, "date")}>Date</TableHeaderCell>
               <TableHeaderCell className="text-right">Actions</TableHeaderCell>
             </tr>
           </TableHead>
