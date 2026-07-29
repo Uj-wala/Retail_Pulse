@@ -7,7 +7,6 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .database import Base
 
-
 def uuid_str() -> str:
     return str(uuid.uuid4())
 
@@ -62,6 +61,9 @@ class AuditAction(str, enum.Enum):
     REORDER_LEVEL_UPDATED = "REORDER_LEVEL_UPDATED"
     PRODUCT_LOW_STOCK = "PRODUCT_LOW_STOCK"
     PRODUCT_OUT_OF_STOCK = "PRODUCT_OUT_OF_STOCK"
+    DASHBOARD_VIEWED = "DASHBOARD_VIEWED"
+    DASHBOARD_FILTERS_APPLIED = "DASHBOARD_FILTERS_APPLIED"
+    REPORT_EXPORTED = "REPORT_EXPORTED"
 
 
 class InventoryTransactionType(str, enum.Enum):
@@ -111,6 +113,7 @@ class AuditEntityType(str, enum.Enum):
     INVENTORY = "INVENTORY"
     SALE = "SALE"
     REPORT = "REPORT"
+    DASHBOARD = "DASHBOARD"
 
 
 class Company(Base):

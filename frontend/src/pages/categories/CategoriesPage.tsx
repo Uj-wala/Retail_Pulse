@@ -62,7 +62,7 @@ export function CategoriesPage() {
     mutationFn: categoryApi.createCategory,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["categories"] });
-      queryClient.invalidateQueries({ queryKey: ["analytics", "summary"] });
+      queryClient.invalidateQueries({ queryKey: ["analytics"] });
       notify("Category created");
       setFormOpen(false);
     },
@@ -77,7 +77,7 @@ export function CategoriesPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["categories"] });
       queryClient.invalidateQueries({ queryKey: ["products"] });
-      queryClient.invalidateQueries({ queryKey: ["analytics", "summary"] });
+      queryClient.invalidateQueries({ queryKey: ["analytics"] });
       notify("Category updated");
       setFormOpen(false);
       setEditing(null);
@@ -91,7 +91,7 @@ export function CategoriesPage() {
     mutationFn: (id: string) => categoryApi.deleteCategory(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["categories"] });
-      queryClient.invalidateQueries({ queryKey: ["analytics", "summary"] });
+      queryClient.invalidateQueries({ queryKey: ["analytics"] });
       notify("Category deleted");
       setDeleting(null);
     },

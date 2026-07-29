@@ -212,6 +212,158 @@ export interface SalesReport {
   }[];
 }
 
+export interface DashboardFilterValues {
+  dateFrom?: string;
+  dateTo?: string;
+  productId?: string;
+  categoryId?: string;
+  brand?: string;
+  salesChannel?: SalesChannel;
+  paymentMethod?: PaymentMethod;
+}
+
+export type DashboardGranularity = "daily" | "weekly" | "monthly";
+
+export interface DashboardKpis {
+  totalRevenue: number;
+  totalOrders: number;
+  totalProductsSold: number;
+  averageOrderValue: number;
+  totalInventoryValue: number;
+  lowStockProducts: number;
+  outOfStockProducts: number;
+  totalCategories: number;
+}
+
+export interface RevenueTrendPoint {
+  period: string;
+  revenue: number;
+}
+
+export interface SalesTrendPoint {
+  period: string;
+  orders: number;
+  unitsSold: number;
+}
+
+export interface TopSellingProduct {
+  productId: string;
+  productName: string;
+  unitsSold: number;
+  revenue: number;
+}
+
+export interface TopCategoryRevenue {
+  category: string;
+  revenue: number;
+  unitsSold: number;
+}
+
+export interface PaymentMethodRevenue {
+  paymentMethod: PaymentMethod;
+  revenue: number;
+}
+
+export interface ChannelRevenue {
+  salesChannel: SalesChannel;
+  revenue: number;
+}
+
+export interface CategoryDistribution {
+  category: string;
+  productCount: number;
+  totalStock: number;
+}
+
+export interface StockStatusSummary {
+  inStock: number;
+  lowStock: number;
+  outOfStock: number;
+}
+
+export interface DashboardProductRow {
+  productId: string;
+  sku: string;
+  name: string;
+  categoryName: string | null;
+  brand: string | null;
+  stockQuantity: number;
+  reorderLevel: number;
+  unitPrice: number;
+  costPrice: number;
+}
+
+export interface CategoryValue {
+  category: string;
+  inventoryValue: number;
+}
+
+export interface DashboardOverview {
+  kpis: DashboardKpis;
+  sales: {
+    revenueTrend: RevenueTrendPoint[];
+    salesTrend: SalesTrendPoint[];
+    topProducts: TopSellingProduct[];
+    topCategories: TopCategoryRevenue[];
+    byPaymentMethod: PaymentMethodRevenue[];
+    byChannel: ChannelRevenue[];
+  };
+  inventory: {
+    distributionByCategory: CategoryDistribution[];
+    stockStatusSummary: StockStatusSummary;
+    topLowStock: DashboardProductRow[];
+    outOfStock: DashboardProductRow[];
+    valueByCategory: CategoryValue[];
+  };
+}
+
+export interface DashboardFilterOptions {
+  products: { id: string; name: string; sku: string }[];
+  categories: { id: string; name: string }[];
+  brands: string[];
+  salesChannels: SalesChannel[];
+  paymentMethods: PaymentMethod[];
+}
+
+export interface DashboardSaleRow {
+  saleId: string;
+  invoiceNumber: string;
+  date: string;
+  customerName: string;
+  salesChannel: SalesChannel;
+  paymentMethod: PaymentMethod;
+  amount: number;
+  quantity: number;
+}
+
+export type DashboardKpiKey =
+  | "revenue"
+  | "orders"
+  | "products_sold"
+  | "average_order_value"
+  | "inventory_value"
+  | "low_stock"
+  | "out_of_stock"
+  | "categories";
+
+export interface DashboardKpiDrilldown {
+  kpi: DashboardKpiKey;
+  type: "sales" | "products" | "categories";
+  rows: (DashboardSaleRow | DashboardProductRow | { categoryId: string; categoryName: string; productCount: number })[];
+}
+
+export interface DashboardCategoryDrilldown {
+  categoryId: string;
+  categoryName: string;
+  rows: { productId: string; sku: string; name: string; stockQuantity: number; unitsSold: number; revenue: number }[];
+}
+
+export interface DashboardProductDrilldown {
+  productId: string;
+  productName: string;
+  rows: DashboardSaleRow[];
+}
+
 export interface InventoryReport {
   total_products: number;
   total_stock_units: number;

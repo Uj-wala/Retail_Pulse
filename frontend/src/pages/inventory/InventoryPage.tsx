@@ -123,6 +123,7 @@ export function InventoryPage() {
       queryClient.invalidateQueries({ queryKey: ["inventory-charts"] });
       queryClient.invalidateQueries({ queryKey: ["inventory-movements"] });
       queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      queryClient.invalidateQueries({ queryKey: ["analytics"] });
       notify("Stock adjustment recorded");
       setAdjusting(null);
     },
@@ -138,6 +139,7 @@ export function InventoryPage() {
       queryClient.invalidateQueries({ queryKey: ["inventory"] });
       queryClient.invalidateQueries({ queryKey: ["inventory-summary"] });
       queryClient.invalidateQueries({ queryKey: ["inventory-charts"] });
+      queryClient.invalidateQueries({ queryKey: ["analytics"] });
       notify("Reorder level updated");
       setEditingReorderLevel(null);
     },

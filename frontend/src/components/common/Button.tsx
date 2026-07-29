@@ -36,11 +36,12 @@ export function Button({
     <button
       disabled={disabled || isLoading}
       className={cn(
-        "relative isolate inline-flex items-center justify-center gap-2 overflow-hidden rounded-lg px-4 py-2.5 text-sm font-semibold",
+        "relative isolate inline-flex cursor-pointer items-center justify-center gap-2 overflow-hidden rounded-lg px-4 py-2.5 text-sm font-semibold",
         "transition-[transform,box-shadow] duration-150 disabled:cursor-not-allowed disabled:opacity-60",
-        "hover:scale-[1.05] active:scale-[0.95] disabled:hover:scale-100 disabled:active:scale-100 disabled:shadow-none",
+        "hover:-translate-y-0.5 hover:scale-[1.05] active:translate-y-0 active:scale-[0.95] disabled:hover:translate-y-0 disabled:hover:scale-100 disabled:active:scale-100 disabled:shadow-none",
         "before:pointer-events-none before:absolute before:inset-0 before:-translate-x-full before:bg-gradient-to-r before:from-transparent before:via-white/35 before:to-transparent before:transition-transform before:duration-700 before:content-['']",
         "hover:before:translate-x-full",
+        "[&>svg]:transition-transform [&>svg]:duration-200 hover:[&>svg]:-rotate-6 hover:[&>svg]:scale-110 active:[&>svg]:rotate-0 active:[&>svg]:scale-95",
         VARIANT_CLASSES[variant],
         className,
       )}

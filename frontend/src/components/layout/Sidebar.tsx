@@ -31,6 +31,7 @@ export function Sidebar({ onNavigate, collapsed, onCollapsedChange }: SidebarPro
 
   const isAdmin = user?.role === "COMPANY_ADMIN" || user?.role === "SUPER_ADMIN";
   const canViewInventory = isAdmin || user?.role === "ANALYST";
+  const canViewAnalytics = isAdmin || user?.role === "ANALYST";
 
   return (
     <div
@@ -59,7 +60,9 @@ export function Sidebar({ onNavigate, collapsed, onCollapsedChange }: SidebarPro
 
       <nav className="flex flex-1 flex-col justify-between gap-0.5 overflow-y-auto px-2 py-3">
         <SidebarNavItem collapsed={collapsed} label="Dashboard" icon={<LayoutDashboard className="h-4 w-4" />} to="/dashboard" onNavigate={handleNavigation} />
-        <SidebarNavItem collapsed={collapsed} label="Analytics" icon={<BarChart3 className="h-4 w-4" />} to="/analytics" onNavigate={handleNavigation} />
+        {canViewAnalytics && (
+          <SidebarNavItem collapsed={collapsed} label="Analytics" icon={<BarChart3 className="h-4 w-4" />} to="/analytics" onNavigate={handleNavigation} />
+        )}
         <SidebarNavItem collapsed={collapsed} label="Sales" icon={<ShoppingCart className="h-4 w-4" />} to="/sales" onNavigate={handleNavigation} />
         <SidebarNavItem collapsed={collapsed} label="Products" icon={<Package className="h-4 w-4" />} to="/products" onNavigate={handleNavigation} />
         <SidebarNavItem collapsed={collapsed} label="Categories" icon={<Tags className="h-4 w-4" />} to="/categories" onNavigate={handleNavigation} />

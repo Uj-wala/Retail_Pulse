@@ -188,6 +188,22 @@ def ensure_inventory_schema(engine: Engine) -> None:
             )
 
 
+def ensure_dashboard_schema(engine: Engine) -> None:
+    if engine.dialect.name != "postgresql":
+        return
+
+    statements = [
+        'ALTER TYPE "AuditAction" ADD VALUE IF NOT EXISTS \'DASHBOARD_VIEWED\'',
+        'ALTER TYPE "AuditAction" ADD VALUE IF NOT EXISTS \'DASHBOARD_FILTERS_APPLIED\'',
+        'ALTER TYPE "AuditAction" ADD VALUE IF NOT EXISTS \'REPORT_EXPORTED\'',
+        'ALTER TYPE "AuditEntityType" ADD VALUE IF NOT EXISTS \'DASHBOARD\'',
+    ]
+
+    with engine.begin() as connection:
+        for statement in statements:
+            connection.execute(text(statement))
+
+
 def ensure_audit_log_schema(engine: Engine) -> None:
     if engine.dialect.name != "postgresql":
         return

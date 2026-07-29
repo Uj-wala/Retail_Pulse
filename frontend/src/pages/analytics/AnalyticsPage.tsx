@@ -1,14 +1,21 @@
+import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { isAxiosError } from "axios";
-import { analyticsApi } from "../../api/analyticsApi";
-import { RevenueChart } from "../../components/dashboard/RevenueChart";
-import { TopProductsCard } from "../../components/dashboard/TopProductsCard";
-import { CategoryBreakdownChart } from "../../components/dashboard/CategoryBreakdownChart";
-import { StatCard, StatCardSkeleton } from "../../components/dashboard/StatCard";
+import { Download, FileText, RefreshCw } from "lucide-react";
+import { dashboardAnalyticsApi } from "../../api/dashboardAnalyticsApi";
+import { Button } from "../../components/common/Button";
 import { ErrorState } from "../../components/common/ErrorState";
+import { EmptyState } from "../../components/common/EmptyState";
 import { Spinner } from "../../components/common/Spinner";
-import { formatCurrency } from "../../services/formatters";
-import { IndianRupee, ShoppingBag, Users as UsersIcon, AlertTriangle } from "lucide-react";
+import { FilterBar } from "../../components/dashboard/retail/FilterBar";
+import { KpiGrid } from "../../components/dashboard/retail/KpiGrid";
+import { TrendCharts } from "../../components/dashboard/retail/TrendCharts";
+import { TopProductsCategoriesPanel } from "../../components/dashboard/retail/TopProductsCategoriesPanel";
+import { SalesBreakdownCharts } from "../../components/dashboard/retail/SalesBreakdownCharts";
+import { InventoryOverviewCharts } from "../../components/dashboard/retail/InventoryOverviewCharts";
+import { StockAlertsPanel } from "../../components/dashboard/retail/StockAlertsPanel";
+import { DrilldownModal, type DrilldownRequest } from "../../components/dashboard/retail/DrilldownModal";
+import type { DashboardFilterValues, DashboardGranularity } from "../../types";
 
 function getApiErrorMessage(error: unknown, fallback: string): string {
   if (!isAxiosError(error)) return fallback;
@@ -20,98 +27,182 @@ function getApiErrorMessage(error: unknown, fallback: string): string {
   return fallback;
 }
 
+const KPI_LABELS: Record<string, string> = {
+  revenue: "Revenue — Sales Transactions",
+  orders: "Orders",
+  products_sold: "Products Sold",
+  average_order_value: "Average Order Value — Sales Transactions",
+  inventory_value: "Inventory Value by Product",
+  low_stock: "Low Stock Products",
+  out_of_stock: "Out of Stock Products",
+  categories: "Categories",
+};
+
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
 export function AnalyticsPage() {
-  const summaryQuery = useQuery({ queryKey: ["analytics", "summary"], queryFn: analyticsApi.getSummary });
-  const revenueQuery = useQuery({
-    queryKey: ["analytics", "revenue"],
-    queryFn: () => analyticsApi.getRevenueOverTime(30),
-  });
-  const topProductsQuery = useQuery({
-    queryKey: ["analytics", "top-products"],
-    queryFn: () => analyticsApi.getTopProducts(8),
-  });
-  const categoryQuery = useQuery({
-    queryKey: ["analytics", "sales-by-category"],
-    queryFn: analyticsApi.getSalesByCategory,
+  const [filters, setFilters] = useState<DashboardFilterValues>({});
+  const [granularity, setGranularity] = useState<DashboardGranularity>("daily");
+  const [drilldown, setDrilldown] = useState<DrilldownRequest | null>(null);
+  const [isExporting, setIsExporting] = useState<"csv" | "pdf" | null>(null);
+  const hasMounted = useRef(false);
+  const filtersAppliedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const overviewQuery = useQuery({
+    queryKey: ["analytics", "dashboard", "overview", filters, granularity],
+    queryFn: () => dashboardAnalyticsApi.getOverview(filters, granularity),
   });
 
-  const summary = summaryQuery.data;
+  const filterOptionsQuery = useQuery({
+    queryKey: ["analytics", "dashboard", "filter-options"],
+    queryFn: dashboardAnalyticsApi.getFilterOptions,
+  });
+
+  // Audit: log once when the dashboard is first viewed.
+  useEffect(() => {
+    dashboardAnalyticsApi.logAuditEvent("viewed");
+  }, []);
+
+  // Audit: log filter changes, debounced so rapid edits collapse into one entry.
+  useEffect(() => {
+    if (!hasMounted.current) {
+      hasMounted.current = true;
+      return;
+    }
+    if (filtersAppliedTimer.current) clearTimeout(filtersAppliedTimer.current);
+    filtersAppliedTimer.current = setTimeout(() => {
+      dashboardAnalyticsApi.logAuditEvent("filters_applied", filters);
+    }, 800);
+    return () => {
+      if (filtersAppliedTimer.current) clearTimeout(filtersAppliedTimer.current);
+    };
+  }, [filters]);
+
+  async function handleExport(format: "csv" | "pdf", section: "kpis" | "sales" | "inventory") {
+    setIsExporting(format);
+    try {
+      const blob = format === "csv" ? await dashboardAnalyticsApi.exportCsv(section, filters) : await dashboardAnalyticsApi.exportPdf(section, filters);
+      downloadBlob(blob, `dashboard-${section}.${format}`);
+    } finally {
+      setIsExporting(null);
+    }
+  }
+
+  const overview = overviewQuery.data;
+  const hasAnyData = overview
+    ? overview.kpis.totalRevenue > 0 ||
+      overview.kpis.totalOrders > 0 ||
+      overview.kpis.totalInventoryValue > 0 ||
+      overview.kpis.totalCategories > 0
+    : false;
 
   return (
     <div>
+      <div className="mb-6 flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
+        <div>
+          <h1 className="text-xl font-bold">Retail Analytics Dashboard</h1>
+          <p className="text-sm text-content-muted">KPIs, sales performance, and inventory health across your company.</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" icon={<RefreshCw className="h-4 w-4" />} onClick={() => overviewQuery.refetch()} isLoading={overviewQuery.isFetching}>
+            Refresh
+          </Button>
+          <Button
+            variant="outline"
+            icon={<Download className="h-4 w-4" />}
+            isLoading={isExporting === "csv"}
+            onClick={() => handleExport("csv", "kpis")}
+          >
+            Export CSV
+          </Button>
+          <Button
+            variant="outline"
+            icon={<FileText className="h-4 w-4" />}
+            isLoading={isExporting === "pdf"}
+            onClick={() => handleExport("pdf", "kpis")}
+          >
+            Export PDF
+          </Button>
+        </div>
+      </div>
+
       <div className="mb-6">
-        <h1 className="text-xl font-bold">Analytics</h1>
-        <p className="text-sm text-content-muted">Deep dive into revenue, products, and category performance.</p>
+        <FilterBar value={filters} onChange={setFilters} options={filterOptionsQuery.data} />
       </div>
 
-      {summaryQuery.isLoading ? (
-        <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCardSkeleton />
-          <StatCardSkeleton />
-          <StatCardSkeleton />
-          <StatCardSkeleton />
-        </div>
-      ) : summaryQuery.isError ? (
-        <div className="mb-6">
-          <ErrorState
-            title="Couldn't load analytics summary"
-            description={getApiErrorMessage(summaryQuery.error, "Please try again.")}
-            onRetry={() => summaryQuery.refetch()}
-          />
-        </div>
-      ) : (
-        <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard label="Total Revenue" value={formatCurrency(summary!.total_revenue)} icon={<IndianRupee className="h-5 w-5" />} />
-          <StatCard label="Total Orders" value={String(summary!.total_orders)} icon={<ShoppingBag className="h-5 w-5" />} />
-          <StatCard label="Total Customers" value={String(summary!.total_customers)} icon={<UsersIcon className="h-5 w-5" />} />
-          <StatCard label="Low Stock Items" value={String(summary!.low_stock_count)} icon={<AlertTriangle className="h-5 w-5" />} />
-        </div>
-      )}
-
-      <div className="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-          {revenueQuery.isLoading ? (
-            <div className="flex justify-center py-10">
-              <Spinner size={24} />
-            </div>
-          ) : revenueQuery.isError ? (
-            <ErrorState
-              title="Couldn't load revenue trend"
-              description={getApiErrorMessage(revenueQuery.error, "Please try again.")}
-              onRetry={() => revenueQuery.refetch()}
-            />
-          ) : (
-            <RevenueChart data={revenueQuery.data ?? []} />
-          )}
-        </div>
-        {categoryQuery.isLoading ? (
-          <div className="flex justify-center py-10">
-            <Spinner size={24} />
-          </div>
-        ) : categoryQuery.isError ? (
-          <ErrorState
-            title="Couldn't load category breakdown"
-            description={getApiErrorMessage(categoryQuery.error, "Please try again.")}
-            onRetry={() => categoryQuery.refetch()}
-          />
-        ) : (
-          <CategoryBreakdownChart data={categoryQuery.data ?? []} />
-        )}
-      </div>
-
-      {topProductsQuery.isLoading ? (
-        <div className="flex justify-center py-10">
-          <Spinner size={24} />
-        </div>
-      ) : topProductsQuery.isError ? (
+      {overviewQuery.isError ? (
         <ErrorState
-          title="Couldn't load top products"
-          description={getApiErrorMessage(topProductsQuery.error, "Please try again.")}
-          onRetry={() => topProductsQuery.refetch()}
+          title="Couldn't load the dashboard"
+          description={getApiErrorMessage(overviewQuery.error, "Please try again.")}
+          onRetry={() => overviewQuery.refetch()}
+        />
+      ) : !overviewQuery.isLoading && !hasAnyData ? (
+        <EmptyState
+          title="No data for the selected filters"
+          description="Try widening your date range or clearing filters to see dashboard results."
+          action={
+            <Button variant="outline" onClick={() => setFilters({})}>
+              Clear filters
+            </Button>
+          }
         />
       ) : (
-        <TopProductsCard products={topProductsQuery.data ?? []} />
+        <div className="space-y-6">
+          <KpiGrid kpis={overview?.kpis} isLoading={overviewQuery.isLoading} onSelect={(kpi) => setDrilldown({ kind: "kpi", kpi, label: KPI_LABELS[kpi] })} />
+
+          <section>
+            <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-content-muted">Sales Analytics</h2>
+            <div className="space-y-4">
+              <TrendCharts
+                revenueTrend={overview?.sales.revenueTrend}
+                salesTrend={overview?.sales.salesTrend}
+                granularity={granularity}
+                onGranularityChange={setGranularity}
+                isLoading={overviewQuery.isLoading}
+              />
+              <TopProductsCategoriesPanel
+                topProducts={overview?.sales.topProducts}
+                topCategories={overview?.sales.topCategories}
+                isLoading={overviewQuery.isLoading}
+                onSelectProduct={(productId) => {
+                  const name = filterOptionsQuery.data?.products.find((p) => p.id === productId)?.name ?? "Product";
+                  setDrilldown({ kind: "product", productId, label: `${name} — Sales Transactions` });
+                }}
+              />
+              <SalesBreakdownCharts byPaymentMethod={overview?.sales.byPaymentMethod} byChannel={overview?.sales.byChannel} isLoading={overviewQuery.isLoading} />
+            </div>
+          </section>
+
+          <section>
+            <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-content-muted">Inventory Analytics</h2>
+            <div className="space-y-4">
+              <InventoryOverviewCharts
+                distributionByCategory={overview?.inventory.distributionByCategory}
+                stockStatusSummary={overview?.inventory.stockStatusSummary}
+                valueByCategory={overview?.inventory.valueByCategory}
+                isLoading={overviewQuery.isLoading}
+              />
+              <StockAlertsPanel topLowStock={overview?.inventory.topLowStock} outOfStock={overview?.inventory.outOfStock} isLoading={overviewQuery.isLoading} />
+            </div>
+          </section>
+        </div>
       )}
+
+      {overviewQuery.isFetching && !overviewQuery.isLoading && (
+        <div className="fixed bottom-6 right-6 flex items-center gap-2 rounded-full bg-surface px-4 py-2 text-xs font-semibold text-content-muted shadow-lg">
+          <Spinner size={14} />
+          Refreshing dashboard…
+        </div>
+      )}
+
+      <DrilldownModal request={drilldown} filters={filters} onClose={() => setDrilldown(null)} />
     </div>
   );
 }

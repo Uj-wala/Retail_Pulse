@@ -186,6 +186,40 @@ canvas {
   }
 }
 
+.cursor-click-ripple {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  margin-left: -9px;
+  margin-top: -9px;
+  border: 2px solid rgba(20, 184, 166, 0.85);
+  border-radius: 9999px;
+  background: radial-gradient(circle, rgba(20, 184, 166, 0.22) 0%, rgba(20, 184, 166, 0) 64%);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.45), 0 0 22px rgba(20, 184, 166, 0.35);
+  animation: cursorRipple 650ms ease-out forwards;
+  transform: scale(0.2);
+}
+
+.dark .cursor-click-ripple {
+  border-color: rgba(45, 212, 191, 0.9);
+  background: radial-gradient(circle, rgba(45, 212, 191, 0.28) 0%, rgba(45, 212, 191, 0) 64%);
+  box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.65), 0 0 24px rgba(45, 212, 191, 0.42);
+}
+
+@keyframes cursorRipple {
+  0% {
+    opacity: 0.9;
+    transform: scale(0.25);
+  }
+  70% {
+    opacity: 0.28;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(3.6);
+  }
+}
+
 /* Shared hover/shadow treatment for icon-only buttons (table actions, sidebar, modals, pagination) */
 .icon-action-btn {
   transition: transform 150ms ease, box-shadow 200ms ease, background-color 150ms ease, color 150ms ease;

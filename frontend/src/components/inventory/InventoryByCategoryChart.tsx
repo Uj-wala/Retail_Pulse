@@ -20,7 +20,7 @@ export function InventoryByCategoryChart({ data }: { data: InventoryCharts["byCa
                 contentStyle={chartTooltipStyle}
                 labelStyle={chartTooltipLabelStyle}
                 itemStyle={chartTooltipItemStyle}
-                cursor={{ fill: "rgba(148, 163, 184, 0.12)" }}
+                cursor={{ fill: "rgba(148, 163, 184, 0.1)" }}
               />
               <Bar dataKey="totalStock" name="Total Stock" fill="#14B8A6" radius={[4, 4, 0, 0]} />
             </BarChart>

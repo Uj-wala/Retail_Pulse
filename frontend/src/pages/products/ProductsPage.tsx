@@ -104,7 +104,7 @@ export function ProductsPage() {
   const invalidateProductAndInventoryQueries = () => {
     queryClient.invalidateQueries({ queryKey: ["products"] });
     queryClient.invalidateQueries({ queryKey: ["categories"] });
-    queryClient.invalidateQueries({ queryKey: ["analytics", "summary"] });
+    queryClient.invalidateQueries({ queryKey: ["analytics"] });
     queryClient.invalidateQueries({ queryKey: ["inventory"] });
     queryClient.invalidateQueries({ queryKey: ["inventory-summary"] });
     queryClient.invalidateQueries({ queryKey: ["inventory-charts"] });

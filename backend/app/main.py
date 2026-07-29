@@ -3,7 +3,13 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .config import get_settings
 from .database import Base, engine
-from .migrations import ensure_audit_log_schema, ensure_inventory_schema, ensure_product_schema, ensure_sales_schema
+from .migrations import (
+    ensure_audit_log_schema,
+    ensure_dashboard_schema,
+    ensure_inventory_schema,
+    ensure_product_schema,
+    ensure_sales_schema,
+)
 from .routers import analytics, auth, categories, company, inventory, notifications, products, profile, reports, sales, users
 
 settings = get_settings()
@@ -26,6 +32,7 @@ def on_startup() -> None:
     ensure_product_schema(engine)
     ensure_audit_log_schema(engine)
     ensure_inventory_schema(engine)
+    ensure_dashboard_schema(engine)
 
 
 @app.get("/health")

@@ -185,6 +185,11 @@ class SaleRequest(BaseModel):
     items: list[SaleItemRequest] = Field(min_length=1)
 
 
+class DashboardAuditRequest(BaseModel):
+    action: Literal["viewed", "filters_applied"]
+    filters: dict | None = None
+
+
 class UpdateSaleRequest(BaseModel):
     customerName: str | None = Field(default=None, max_length=255)
     saleDate: datetime | None = None
