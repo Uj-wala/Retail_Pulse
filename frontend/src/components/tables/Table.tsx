@@ -1,13 +1,31 @@
 import { Children, cloneElement, isValidElement } from "react";
 import type { ThHTMLAttributes, TdHTMLAttributes, HTMLAttributes, ReactElement } from "react";
-import { ArrowDown, ArrowUp } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronsUpDown } from "lucide-react";
 import { cn } from "../../utils/cn";
 import { Skeleton } from "../common/Skeleton";
 
-export function Table({ children }: { children: React.ReactNode }) {
+interface TableProps {
+  children: React.ReactNode;
+  className?: string;
+  tableClassName?: string;
+  /** Set false to disable the horizontal-scroll wrapper, e.g. when columns use fixed % widths sized to fit the viewport. */
+  scroll?: boolean;
+  /** Uses table-layout: fixed so <col> widths (via a <colgroup>) are respected instead of sizing to content. */
+  fixed?: boolean;
+}
+
+export function Table({ children, className, tableClassName, scroll = true, fixed = false }: TableProps) {
   return (
-    <div className="w-full overflow-x-auto rounded-xl border border-border/15 [-webkit-overflow-scrolling:touch]">
-      <table className="w-full border-collapse text-left text-xs sm:text-sm">{children}</table>
+    <div
+      className={cn(
+        "w-full rounded-xl border border-border/15",
+        scroll && "overflow-x-auto [-webkit-overflow-scrolling:touch]",
+        className,
+      )}
+    >
+      <table className={cn("w-full border-collapse text-left text-xs sm:text-sm", fixed && "table-fixed", tableClassName)}>
+        {children}
+      </table>
     </div>
   );
 }
@@ -50,19 +68,27 @@ interface TableHeaderCellProps extends ThHTMLAttributes<HTMLTableCellElement> {
   sortDirection?: "asc" | "desc";
   /** When provided, the header renders as a clickable/keyboard-focusable sort control (like MUI's TableSortLabel). */
   onSort?: () => void;
+  /** Tighter padding/type scale for dense, fixed-width tables that must fit within a fixed viewport without scrolling. */
+  compact?: boolean;
 }
 
-export function TableHeaderCell({ children, className, sortDirection, onSort, ...rest }: TableHeaderCellProps) {
+export function TableHeaderCell({ children, className, sortDirection, onSort, compact, ...rest }: TableHeaderCellProps) {
   const indicator = (
     <>
-      {sortDirection === "asc" && <ArrowUp className="h-3 w-3" />}
-      {sortDirection === "desc" && <ArrowDown className="h-3 w-3" />}
+      {sortDirection === "asc" && <ArrowUp className="h-3 w-3 shrink-0" />}
+      {sortDirection === "desc" && <ArrowDown className="h-3 w-3 shrink-0" />}
+      {!sortDirection && onSort && <ChevronsUpDown className="h-3 w-3 shrink-0 opacity-40" />}
     </>
   );
 
   return (
     <th
-      className={cn("px-2 py-3 font-semibold sm:px-4", sortDirection && "text-brand-teal", className)}
+      className={cn(
+        "whitespace-nowrap overflow-hidden font-semibold",
+        compact ? "px-2 py-2.5 text-[13px]" : "px-1.5 py-2.5 sm:px-2.5",
+        sortDirection && "text-brand-teal",
+        className,
+      )}
       aria-sort={sortDirection === "asc" ? "ascending" : sortDirection === "desc" ? "descending" : undefined}
       {...rest}
     >
@@ -70,14 +96,14 @@ export function TableHeaderCell({ children, className, sortDirection, onSort, ..
         <button
           type="button"
           onClick={onSort}
-          className="inline-flex items-center gap-1 rounded hover:text-brand-teal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-teal/40"
+          className="inline-flex max-w-full items-center gap-1 rounded hover:text-brand-teal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-teal/40"
         >
-          {children}
+          <span className="truncate">{children}</span>
           {indicator}
         </button>
       ) : (
-        <span className="inline-flex items-center gap-1">
-          {children}
+        <span className="inline-flex max-w-full items-center gap-1">
+          <span className="truncate">{children}</span>
           {indicator}
         </span>
       )}
@@ -85,9 +111,17 @@ export function TableHeaderCell({ children, className, sortDirection, onSort, ..
   );
 }
 
-export function TableCell({ children, className, ...rest }: TdHTMLAttributes<HTMLTableCellElement>) {
+interface TableCellProps extends TdHTMLAttributes<HTMLTableCellElement> {
+  /** Tighter padding/type scale for dense, fixed-width tables that must fit within a fixed viewport without scrolling. */
+  compact?: boolean;
+}
+
+export function TableCell({ children, className, compact, ...rest }: TableCellProps) {
   return (
-    <td className={cn("px-2 py-3 align-middle sm:px-4", className)} {...rest}>
+    <td
+      className={cn("align-middle overflow-hidden", compact ? "px-2 py-2.5 text-[13px]" : "px-1.5 py-2.5 sm:px-2.5", className)}
+      {...rest}
+    >
       {children}
     </td>
   );

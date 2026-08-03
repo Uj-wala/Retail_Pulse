@@ -11,6 +11,7 @@ export interface SaleItemPayload {
 
 export interface SalePayload {
   customerName?: string;
+  customerId?: string;
   saleDate?: string;
   salesChannel: SalesChannel;
   paymentMethod: PaymentMethod;

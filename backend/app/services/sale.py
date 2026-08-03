@@ -9,6 +9,7 @@ from ..models import (
     AuditAction,
     AuditEntityType,
     Category,
+    Customer,
     InventoryMovementType,
     PaymentMethod,
     Product,
@@ -22,6 +23,7 @@ from ..schemas import SaleItemRequest, SaleRequest, UpdateSaleRequest
 from .audit import write_audit_log
 from .inventory import apply_stock_delta
 from .product import get_product
+from . import customer as customer_service
 
 ENTITY_TYPE = AuditEntityType.SALE
 MAX_INVOICE_NUMBER_ATTEMPTS = 5
@@ -64,6 +66,13 @@ def _generate_invoice_number(db: Session, company_id: str, sale_date: datetime |
     )
     next_number = int(latest.rsplit("-", 1)[1]) + 1 if latest else 1
     return f"{prefix}{next_number:06d}"
+
+
+def _resolve_customer(db: Session, company_id: str, customer_id: str) -> Customer:
+    customer = db.scalar(select(Customer).where(Customer.id == customer_id, Customer.company_id == company_id))
+    if not customer:
+        raise HTTPException(404, "Customer not found")
+    return customer
 
 
 def _apply_product_stock_change(
@@ -218,6 +227,7 @@ def create_sale(db: Session, company_id: str, user_id: str, payload: SaleRequest
     # UniqueConstraint("company_id", "invoice_number") on Sale and retry with a freshly
     # generated number whenever it's violated.
     sale_date = payload.saleDate or utcnow()
+    customer = _resolve_customer(db, company_id, payload.customerId) if payload.customerId else None
 
     for attempt in range(MAX_INVOICE_NUMBER_ATTEMPTS):
         invoice_number = _generate_invoice_number(db, company_id, sale_date)
@@ -225,7 +235,8 @@ def create_sale(db: Session, company_id: str, user_id: str, payload: SaleRequest
             company_id=company_id,
             user_id=user_id,
             invoice_number=invoice_number,
-            customer_name=payload.customerName.strip() if payload.customerName else None,
+            customer_id=customer.id if customer else None,
+            customer_name=customer.full_name if customer else (payload.customerName.strip() if payload.customerName else None),
             sale_date=sale_date,
             sales_channel=payload.salesChannel,
             payment_method=payload.paymentMethod,
@@ -242,6 +253,13 @@ def create_sale(db: Session, company_id: str, user_id: str, payload: SaleRequest
         total_amount, product_names = _build_sale_items(db, company_id, user_id, sale, payload.items)
         sale.total_amount = total_amount
         write_audit_log(db, AuditAction.SALE_CREATED, company_id, user_id, details=_audit_details(invoice_number, product_names), entity_type=ENTITY_TYPE)
+
+        if customer:
+            # The session is autoflush=False, and recompute_purchase_summary reads Sale/SaleItem
+            # back via fresh SELECTs — flush first so it sees this sale's just-assigned
+            # total_amount instead of the placeholder 0 the row was inserted with.
+            db.flush()
+            customer_service.recompute_purchase_summary(db, company_id, customer.id, user_id)
 
         try:
             db.commit()
@@ -261,6 +279,15 @@ def update_sale(db: Session, company_id: str, user_id: str, sale_id: str, payloa
     if sale.status != SaleStatus.COMPLETED:
         raise HTTPException(409, "Only completed sales can be edited")
 
+    original_customer_id = sale.customer_id
+
+    if payload.customerId is not None:
+        if payload.customerId:
+            customer = _resolve_customer(db, company_id, payload.customerId)
+            sale.customer_id = customer.id
+            sale.customer_name = customer.full_name
+        else:
+            sale.customer_id = None
     if payload.customerName is not None:
         sale.customer_name = payload.customerName.strip() or None
     if payload.saleDate is not None:
@@ -281,6 +308,11 @@ def update_sale(db: Session, company_id: str, user_id: str, sale_id: str, payloa
         sale.total_amount = total_amount
 
     write_audit_log(db, AuditAction.SALE_UPDATED, company_id, user_id, details=_audit_details(sale.invoice_number, product_names), entity_type=ENTITY_TYPE)
+
+    db.flush()
+    for affected_customer_id in {original_customer_id, sale.customer_id} - {None}:
+        customer_service.recompute_purchase_summary(db, company_id, affected_customer_id, user_id)
+
     db.commit()
     return _load(db, sale_id)
 
@@ -290,6 +322,7 @@ def delete_sale(db: Session, company_id: str, user_id: str, sale_id: str) -> Non
     if not sale:
         raise HTTPException(404, "Sale not found")
     invoice_number = sale.invoice_number
+    customer_id = sale.customer_id
     product_names = [item.product.name for item in sale.items if item.product]
     if sale.status == SaleStatus.COMPLETED:
         for item in sale.items:
@@ -297,6 +330,11 @@ def delete_sale(db: Session, company_id: str, user_id: str, sale_id: str) -> Non
 
     db.delete(sale)
     write_audit_log(db, AuditAction.SALE_DELETED, company_id, user_id, details=_audit_details(invoice_number, product_names), entity_type=ENTITY_TYPE)
+    db.flush()
+
+    if customer_id:
+        customer_service.recompute_purchase_summary(db, company_id, customer_id, user_id)
+
     db.commit()
 
 
@@ -312,6 +350,11 @@ def refund_sale(db: Session, company_id: str, user_id: str, sale_id: str) -> Sal
 
     sale.status = SaleStatus.REFUNDED
     write_audit_log(db, AuditAction.SALE_REFUNDED, company_id, user_id, details=sale.invoice_number, entity_type=ENTITY_TYPE)
+
+    if sale.customer_id:
+        db.flush()
+        customer_service.recompute_purchase_summary(db, company_id, sale.customer_id, user_id)
+
     db.commit()
     return _load(db, sale_id)
 

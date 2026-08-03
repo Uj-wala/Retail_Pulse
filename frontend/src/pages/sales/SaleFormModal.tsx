@@ -8,7 +8,7 @@ import { FormTextField } from "../../components/forms/FormTextField";
 import { FormSelect } from "../../components/forms/FormSelect";
 import { formatCurrency } from "../../services/formatters";
 import { saleSchema, type SaleFormInput, type SaleFormValues } from "./saleSchema";
-import type { Product, Sale } from "../../types";
+import type { Customer, Product, Sale } from "../../types";
 
 interface SaleFormModalProps {
   open: boolean;
@@ -16,6 +16,7 @@ interface SaleFormModalProps {
   onSubmit: (values: SaleFormValues) => void;
   isSubmitting: boolean;
   products: Product[];
+  customers: Customer[];
   initial?: Sale | null;
 }
 
@@ -30,6 +31,7 @@ function toLocalInputDate(value?: string) {
 function defaultValues(initial?: Sale | null): SaleFormInput {
   return {
     customerName: initial?.customer_name ?? "",
+    customerId: initial?.customer_id ?? "",
     saleDate: toLocalInputDate(initial?.sale_date),
     salesChannel: initial?.sales_channel ?? "RETAIL_STORE",
     paymentMethod: initial?.payment_method ?? "CASH",
@@ -45,13 +47,14 @@ function defaultValues(initial?: Sale | null): SaleFormInput {
   };
 }
 
-export function SaleFormModal({ open, onClose, onSubmit, isSubmitting, products, initial }: SaleFormModalProps) {
+export function SaleFormModal({ open, onClose, onSubmit, isSubmitting, products, customers, initial }: SaleFormModalProps) {
   const { control, handleSubmit, reset, setValue } = useForm<SaleFormInput, unknown, SaleFormValues>({
     resolver: zodResolver(saleSchema),
     defaultValues: defaultValues(initial),
   });
   const { fields, append, remove } = useFieldArray({ control, name: "items" });
   const items = useWatch({ control, name: "items" });
+  const customerId = useWatch({ control, name: "customerId" });
 
   useEffect(() => {
     if (open) reset(defaultValues(initial));
@@ -82,7 +85,15 @@ export function SaleFormModal({ open, onClose, onSubmit, isSubmitting, products,
         noValidate
       >
         <div className="grid gap-3 sm:grid-cols-2">
-          <FormTextField name="customerName" control={control} label="Customer Name" />
+          <FormSelect name="customerId" control={control} label="Registered Customer">
+            <option value="">Walk-in / not registered</option>
+            {customers.map((customer) => (
+              <option key={customer.id} value={customer.id}>
+                {customer.full_name} ({customer.customer_code})
+              </option>
+            ))}
+          </FormSelect>
+          <FormTextField name="customerName" control={control} label="Customer Name" disabled={!!customerId} placeholder={customerId ? "Using registered customer's name" : undefined} />
           <FormTextField name="saleDate" control={control} label="Sale Date & Time" type="datetime-local" />
           <FormSelect name="salesChannel" control={control} label="Sales Channel">
             <option value="RETAIL_STORE">Retail Store</option>

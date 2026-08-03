@@ -1,9 +1,12 @@
+import json
 from decimal import Decimal
 
 from .models import (
     AuditLog,
     Category,
     Company,
+    Customer,
+    CustomerPurchaseSummary,
     Inventory,
     InventoryMovement,
     InventoryTransaction,
@@ -84,6 +87,76 @@ def serialize_product(product: Product) -> dict:
     }
 
 
+def serialize_customer_summary(summary: CustomerPurchaseSummary | None) -> dict:
+    if not summary:
+        return {
+            "total_orders": 0,
+            "total_revenue": 0.0,
+            "total_quantity": 0,
+            "average_order_value": 0.0,
+            "first_purchase_date": None,
+            "last_purchase_date": None,
+            "favorite_product_id": None,
+            "favorite_product_name": None,
+            "favorite_category_id": None,
+            "favorite_category_name": None,
+            "segment": "NEW",
+        }
+    return {
+        "total_orders": summary.total_orders,
+        "total_revenue": number(summary.total_revenue),
+        "total_quantity": summary.total_quantity,
+        "average_order_value": number(summary.average_order_value),
+        "first_purchase_date": iso(summary.first_purchase_date),
+        "last_purchase_date": iso(summary.last_purchase_date),
+        "favorite_product_id": summary.favorite_product_id,
+        "favorite_product_name": summary.favorite_product.name if summary.favorite_product else None,
+        "favorite_category_id": summary.favorite_category_id,
+        "favorite_category_name": summary.favorite_category.name if summary.favorite_category else None,
+        "segment": summary.segment.value,
+    }
+
+
+def serialize_customer(customer: Customer) -> dict:
+    return {
+        "id": customer.id,
+        "company_id": customer.company_id,
+        "customer_code": customer.customer_code,
+        "full_name": customer.full_name,
+        "email": customer.email,
+        "phone": customer.phone,
+        "date_of_birth": customer.date_of_birth.isoformat() if customer.date_of_birth else None,
+        "gender": customer.gender.value if customer.gender else None,
+        "address": customer.address,
+        "city": customer.city,
+        "state": customer.state,
+        "country": customer.country,
+        "postal_code": customer.postal_code,
+        "customer_type": customer.customer_type.value,
+        "preferred_channel": customer.preferred_channel.value if customer.preferred_channel else None,
+        "is_active": customer.is_active,
+        "summary": serialize_customer_summary(customer.summary),
+        "created_at": iso(customer.created_at),
+        "updated_at": iso(customer.updated_at),
+    }
+
+
+def serialize_customer_profile(customer: Customer, recent_sales: list[Sale]) -> dict:
+    profile = serialize_customer(customer)
+    profile["recent_activity"] = [serialize_sale(sale) for sale in recent_sales]
+    return profile
+
+
+def serialize_timeline_entry(entry: dict) -> dict:
+    return {
+        "type": entry["type"],
+        "details": entry["details"],
+        "occurred_at": iso(entry["occurred_at"]),
+        "performed_by": entry.get("performed_by"),
+        "purchase_value": entry.get("purchase_value"),
+    }
+
+
 def serialize_inventory_transaction(transaction: InventoryTransaction) -> dict:
     return {
         "id": transaction.id,
@@ -141,8 +214,11 @@ def serialize_notification(notification: Notification) -> dict:
         "id": notification.id,
         "product_id": notification.product_id,
         "product_name": notification.product.name if notification.product else None,
+        "customer_id": notification.customer_id,
+        "customer_name": notification.customer.full_name if notification.customer else None,
         "title": notification.title,
         "message": notification.message,
+        "is_read": notification.is_read,
         "created_at": iso(notification.created_at),
     }
 
@@ -164,12 +240,30 @@ def serialize_sale_item(item: SaleItem) -> dict:
     }
 
 
-def serialize_audit_log(log: AuditLog) -> dict:
+def serialize_audit_log(log: AuditLog, customer_name: str | None = None) -> dict:
+    def decode(value: str | None):
+        if not value:
+            return None
+        try:
+            return json.loads(value)
+        except json.JSONDecodeError:
+            return value
+
     return {
         "id": log.id,
+        "company_id": log.company_id,
+        "customer_id": log.entity_id if log.entity_type and log.entity_type.value == "CUSTOMER" else None,
+        "customer_name": customer_name,
+        "user_id": log.user_id,
+        "performed_by": log.user.name if log.user else None,
         "action": log.action.value,
         "entity_type": log.entity_type.value if log.entity_type else None,
+        "entity_id": log.entity_id,
         "details": log.details,
+        "previous_values": decode(log.previous_values),
+        "new_values": decode(log.new_values),
+        "ip_address": log.ip_address,
+        "user_agent": log.user_agent,
         "created_at": iso(log.created_at),
     }
 
@@ -182,6 +276,7 @@ def serialize_sale(sale: Sale) -> dict:
         "created_by": sale.user_id,
         "cashier_name": sale.user.name if sale.user else None,
         "invoice_number": sale.invoice_number,
+        "customer_id": sale.customer_id,
         "customer_name": sale.customer_name,
         "sale_date": iso(sale.sale_date),
         "sales_channel": sale.sales_channel.value,

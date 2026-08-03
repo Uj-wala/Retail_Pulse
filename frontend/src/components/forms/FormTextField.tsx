@@ -5,7 +5,7 @@ import { cn } from "../../utils/cn";
 interface FormTextFieldProps<TFieldValues extends FieldValues>
   extends Omit<InputHTMLAttributes<HTMLInputElement>, "name" | "defaultValue"> {
   name: Path<TFieldValues>;
-  control: Control<TFieldValues>;
+  control: Control<TFieldValues, unknown, FieldValues>;
   label: string;
 }
 

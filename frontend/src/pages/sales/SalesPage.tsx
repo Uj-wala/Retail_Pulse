@@ -5,6 +5,7 @@ import { Banknote, CreditCard, Eye, Pencil, Plus, ReceiptText, Search, ShoppingC
 import { saleApi, type SaleFilters, type SalePayload } from "../../api/saleApi";
 import { productApi } from "../../api/productApi";
 import { categoryApi } from "../../api/categoryApi";
+import { customerApi } from "../../api/customerApi";
 import { Button } from "../../components/common/Button";
 import { EmptyState } from "../../components/common/EmptyState";
 import { ErrorState } from "../../components/common/ErrorState";
@@ -58,6 +59,7 @@ function getApiErrorMessage(error: unknown, fallback: string): string {
 function toPayload(values: SaleFormValues): SalePayload {
   return {
     customerName: values.customerName || undefined,
+    customerId: values.customerId || undefined,
     saleDate: values.saleDate ? new Date(values.saleDate).toISOString() : undefined,
     salesChannel: values.salesChannel,
     paymentMethod: values.paymentMethod,
@@ -173,13 +175,29 @@ export function SalesPage() {
     queryKey: ["categories", { pageSize: 200 }],
     queryFn: () => categoryApi.listCategories({ pageSize: 200 }),
   });
+  const customersQuery = useQuery({
+    queryKey: ["customers", { isActive: true, pageSize: 200 }],
+    queryFn: () => customerApi.listCustomers({ isActive: true, pageSize: 200 }),
+  });
+
+  const invalidateAfterSaleChange = () => {
+    queryClient.invalidateQueries({ queryKey: ["sales"] });
+    queryClient.invalidateQueries({ queryKey: ["products"] });
+    queryClient.invalidateQueries({ queryKey: ["analytics"] });
+    queryClient.invalidateQueries({ queryKey: ["customers"] });
+    queryClient.invalidateQueries({ queryKey: ["customer"] });
+    queryClient.invalidateQueries({ queryKey: ["customer-analytics"] });
+    queryClient.invalidateQueries({ queryKey: ["customer-purchase-history"] });
+    queryClient.invalidateQueries({ queryKey: ["customer-timeline"] });
+    queryClient.invalidateQueries({ queryKey: ["customer-recent-activity"] });
+    queryClient.invalidateQueries({ queryKey: ["customer-audit-logs"] });
+    queryClient.invalidateQueries({ queryKey: ["notifications"] });
+  };
 
   const createMutation = useMutation({
     mutationFn: saleApi.createSale,
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["sales"] });
-      queryClient.invalidateQueries({ queryKey: ["products"] });
-      queryClient.invalidateQueries({ queryKey: ["analytics"] });
+      invalidateAfterSaleChange();
       notify(`Sale ${data.sale.invoice_number} completed`);
       setFormOpen(false);
     },
@@ -189,9 +207,7 @@ export function SalesPage() {
   const updateMutation = useMutation({
     mutationFn: ({ id, payload }: { id: string; payload: SalePayload }) => saleApi.updateSale(id, payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["sales"] });
-      queryClient.invalidateQueries({ queryKey: ["products"] });
-      queryClient.invalidateQueries({ queryKey: ["analytics"] });
+      invalidateAfterSaleChange();
       notify("Sale updated");
       setFormOpen(false);
       setEditing(null);
@@ -202,9 +218,7 @@ export function SalesPage() {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => saleApi.deleteSale(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["sales"] });
-      queryClient.invalidateQueries({ queryKey: ["products"] });
-      queryClient.invalidateQueries({ queryKey: ["analytics"] });
+      invalidateAfterSaleChange();
       notify("Sale deleted");
       setDeleting(null);
     },
@@ -214,8 +228,7 @@ export function SalesPage() {
   const refundMutation = useMutation({
     mutationFn: (id: string) => saleApi.refundSale(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["sales"] });
-      queryClient.invalidateQueries({ queryKey: ["products"] });
+      invalidateAfterSaleChange();
       notify("Sale refunded");
       setRefunding(null);
     },
@@ -224,6 +237,7 @@ export function SalesPage() {
   const sales = salesQuery.data?.sales ?? [];
   const products = productsQuery.data?.products ?? [];
   const categories = categoriesQuery.data?.categories ?? [];
+  const customers = customersQuery.data?.customers ?? [];
   const summary = summaryQuery.data;
 
   return (
@@ -359,6 +373,7 @@ export function SalesPage() {
       {salesQuery.data && <Pagination page={page} pageSize={salesQuery.data.pageSize} total={salesQuery.data.total} onPageChange={setPage} />}
 
       <SaleFormModal
+        customers={customers}
         open={formOpen}
         onClose={() => { setFormOpen(false); setEditing(null); }}
         products={products}

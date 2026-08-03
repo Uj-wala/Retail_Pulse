@@ -1,10 +1,10 @@
-from datetime import datetime
+from datetime import date, datetime
 
 from typing import Literal
 
 from pydantic import BaseModel, EmailStr, Field, model_validator
 
-from .models import InventoryTransactionType, PaymentMethod, SalesChannel, UserRole, UserStatus
+from .models import CustomerType, Gender, InventoryTransactionType, PaymentMethod, SalesChannel, UserRole, UserStatus
 
 
 class RegisterCompanyRequest(BaseModel):
@@ -167,6 +167,61 @@ class UpdateReorderLevelRequest(BaseModel):
     reorderLevel: int = Field(ge=0)
 
 
+CUSTOMER_PHONE_PATTERN = r"^[0-9+()\-\s]{7,32}$"
+
+
+class CustomerRequest(BaseModel):
+    fullName: str = Field(min_length=1, max_length=255)
+    email: EmailStr
+    phone: str = Field(min_length=7, max_length=32, pattern=CUSTOMER_PHONE_PATTERN)
+    customerType: CustomerType
+    dateOfBirth: date | None = None
+    gender: Gender | None = None
+    address: str = Field(min_length=1, max_length=1000)
+    city: str = Field(min_length=1, max_length=100)
+    state: str = Field(min_length=1, max_length=100)
+    country: str = Field(min_length=1, max_length=100)
+    postalCode: str | None = Field(default=None, max_length=20)
+    preferredChannel: SalesChannel | None = None
+    isActive: bool = True
+
+    @model_validator(mode="after")
+    def date_of_birth_not_future(self):
+        if self.dateOfBirth and self.dateOfBirth > date.today():
+            raise ValueError("Date of birth cannot be in the future")
+        return self
+
+
+class UpdateCustomerRequest(BaseModel):
+    fullName: str | None = Field(default=None, min_length=1, max_length=255)
+    email: EmailStr | None = None
+    phone: str | None = Field(default=None, min_length=7, max_length=32, pattern=CUSTOMER_PHONE_PATTERN)
+    customerType: CustomerType | None = None
+    dateOfBirth: date | None = None
+    gender: Gender | None = None
+    address: str | None = Field(default=None, max_length=1000)
+    city: str | None = Field(default=None, max_length=100)
+    state: str | None = Field(default=None, max_length=100)
+    country: str | None = Field(default=None, max_length=100)
+    postalCode: str | None = Field(default=None, max_length=20)
+    preferredChannel: SalesChannel | None = None
+    isActive: bool | None = None
+
+    @model_validator(mode="after")
+    def date_of_birth_not_future(self):
+        if self.dateOfBirth and self.dateOfBirth > date.today():
+            raise ValueError("Date of birth cannot be in the future")
+        return self
+
+
+class CustomerStatusRequest(BaseModel):
+    isActive: bool
+
+
+class NotificationReadRequest(BaseModel):
+    isRead: bool
+
+
 class SaleItemRequest(BaseModel):
     productId: str = Field(min_length=1)
     quantity: int = Field(gt=0)
@@ -179,6 +234,7 @@ class SaleRequest(BaseModel):
     # Intentionally optional: retail/POS sales support anonymous or walk-in customers who
     # don't provide a name. See docs/API.md for the full rationale.
     customerName: str | None = Field(default=None, max_length=255)
+    customerId: str | None = Field(default=None, description="Optional link to a registered Customer record")
     saleDate: datetime | None = None
     salesChannel: SalesChannel = SalesChannel.RETAIL_STORE
     paymentMethod: PaymentMethod = PaymentMethod.CASH
@@ -192,6 +248,7 @@ class DashboardAuditRequest(BaseModel):
 
 class UpdateSaleRequest(BaseModel):
     customerName: str | None = Field(default=None, max_length=255)
+    customerId: str | None = Field(default=None, description="Optional link to a registered Customer record")
     saleDate: datetime | None = None
     salesChannel: SalesChannel | None = None
     paymentMethod: PaymentMethod | None = None

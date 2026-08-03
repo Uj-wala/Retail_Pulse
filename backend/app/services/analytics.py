@@ -7,7 +7,8 @@ from fastapi import HTTPException
 from sqlalchemy import desc, func, select
 from sqlalchemy.orm import Session, joinedload
 
-from ..models import Category, PaymentMethod, Product, Sale, SaleItem, SalesChannel, SaleStatus
+from ..models import Category, Customer, PaymentMethod, Product, Sale, SaleItem, SalesChannel, SaleStatus
+from . import customer as customer_service
 from .product import low_stock_products
 
 
@@ -95,11 +96,7 @@ def get_summary(db: Session, company_id: str) -> dict:
         select(func.coalesce(func.sum(Sale.total_amount), 0)).where(Sale.company_id == company_id, Sale.status == SaleStatus.COMPLETED)
     )
     total_orders = db.scalar(select(func.count(Sale.id)).where(Sale.company_id == company_id, Sale.status == SaleStatus.COMPLETED))
-    total_customers = db.scalar(
-        select(func.count(func.distinct(Sale.customer_name))).where(
-            Sale.company_id == company_id, Sale.status == SaleStatus.COMPLETED, Sale.customer_name.is_not(None)
-        )
-    )
+    total_customers = db.scalar(select(func.count(Customer.id)).where(Customer.company_id == company_id))
     low_stock_count = len(low_stock_products(db, company_id))
 
     total_products = db.scalar(select(func.count(Product.id)).where(Product.company_id == company_id)) or 0
@@ -402,6 +399,28 @@ def get_filter_options(db: Session, company_id: str) -> dict:
     }
 
 
+def get_customer_insights(db: Session, company_id: str) -> dict:
+    overview = customer_service.customer_analytics_overview(db, company_id, customer_service.CustomerAnalyticsFilters())
+    recent_customers = db.scalars(
+        select(Customer).where(Customer.company_id == company_id).order_by(desc(Customer.created_at)).limit(5)
+    ).all()
+    return {
+        "topCustomers": overview["topCustomers"],
+        "recentCustomers": [
+            {
+                "customerId": c.id,
+                "customerCode": c.customer_code,
+                "name": c.full_name,
+                "customerType": c.customer_type.value,
+                "createdAt": c.created_at.isoformat(),
+            }
+            for c in recent_customers
+        ],
+        "customerGrowth": overview["growthTrend"],
+        "customerRevenueContribution": overview["revenueByType"],
+    }
+
+
 def get_overview(db: Session, company_id: str, filters: DashboardFilters, granularity: str = "daily") -> dict:
     return {
         "kpis": get_kpis(db, company_id, filters),
@@ -420,6 +439,7 @@ def get_overview(db: Session, company_id: str, filters: DashboardFilters, granul
             "outOfStock": get_out_of_stock_products(db, company_id, filters, 50),
             "valueByCategory": get_inventory_value_by_category(db, company_id, filters),
         },
+        "customers": get_customer_insights(db, company_id),
     }
 
 

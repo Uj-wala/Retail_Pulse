@@ -7,6 +7,9 @@ export type AdjustmentDirection = "INCREASE" | "DECREASE";
 export type SaleStatus = "COMPLETED" | "REFUNDED" | "CANCELLED";
 export type SalesChannel = "RETAIL_STORE" | "ONLINE_STORE" | "MARKETPLACE";
 export type PaymentMethod = "CASH" | "CARD" | "UPI" | "BANK_TRANSFER";
+export type CustomerType = "RETAIL" | "WHOLESALE" | "CORPORATE";
+export type Gender = "MALE" | "FEMALE" | "OTHER" | "PREFER_NOT_TO_SAY";
+export type CustomerSegment = "NEW" | "REGULAR" | "LOYAL" | "VIP";
 
 export interface Company {
   id: string;
@@ -42,13 +45,23 @@ export interface ProfileResponse {
   company: Company;
 }
 
-export type AuditEntityType = "COMPANY" | "USER" | "CATEGORY" | "PRODUCT" | "INVENTORY" | "SALE" | "REPORT";
+export type AuditEntityType = "COMPANY" | "USER" | "CATEGORY" | "PRODUCT" | "INVENTORY" | "SALE" | "REPORT" | "DASHBOARD" | "CUSTOMER";
 
 export interface ActivityLogEntry {
   id: string;
+  company_id?: string | null;
+  customer_id?: string | null;
+  customer_name?: string | null;
+  user_id?: string | null;
+  performed_by?: string | null;
   action: string;
   entity_type: AuditEntityType | null;
+  entity_id: string | null;
   details: string | null;
+  previous_values?: Record<string, unknown> | null;
+  new_values?: Record<string, unknown> | null;
+  ip_address?: string | null;
+  user_agent?: string | null;
   created_at: string;
 }
 
@@ -132,8 +145,11 @@ export interface Notification {
   id: string;
   product_id: string | null;
   product_name: string | null;
+  customer_id: string | null;
+  customer_name: string | null;
   title: string;
   message: string;
+  is_read: boolean;
   created_at: string;
 }
 
@@ -159,6 +175,7 @@ export interface Sale {
   created_by: string;
   cashier_name: string | null;
   invoice_number: string;
+  customer_id: string | null;
   customer_name: string | null;
   sale_date: string;
   sales_channel: SalesChannel;
@@ -315,6 +332,151 @@ export interface DashboardOverview {
     outOfStock: DashboardProductRow[];
     valueByCategory: CategoryValue[];
   };
+  customers: CustomerInsights;
+}
+
+// ---------------------------------------------------------------------------
+// Customers
+// ---------------------------------------------------------------------------
+
+export interface CustomerPurchaseSummary {
+  total_orders: number;
+  total_revenue: number;
+  total_quantity: number;
+  average_order_value: number;
+  first_purchase_date: string | null;
+  last_purchase_date: string | null;
+  favorite_product_id: string | null;
+  favorite_product_name: string | null;
+  favorite_category_id: string | null;
+  favorite_category_name: string | null;
+  segment: CustomerSegment;
+}
+
+export interface Customer {
+  id: string;
+  company_id: string;
+  customer_code: string;
+  full_name: string;
+  email: string;
+  phone: string;
+  date_of_birth: string | null;
+  gender: Gender | null;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  country: string | null;
+  postal_code: string | null;
+  customer_type: CustomerType;
+  preferred_channel: SalesChannel | null;
+  is_active: boolean;
+  summary: CustomerPurchaseSummary;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CustomerProfile extends Customer {
+  recent_activity: Sale[];
+}
+
+export interface CustomerTimelineEntry {
+  type: string;
+  details: string | null;
+  occurred_at: string;
+  performed_by: string | null;
+  purchase_value: number | null;
+}
+
+export interface FrequentlyPurchasedProduct {
+  product_id: string;
+  product_name: string;
+  total_quantity: number;
+}
+
+export interface CustomerPurchaseHistory {
+  sales: Sale[];
+  total: number;
+  page: number;
+  pageSize: number;
+  frequentlyPurchasedProducts: FrequentlyPurchasedProduct[];
+}
+
+export interface CustomerAnalyticsKpis {
+  totalCustomers: number;
+  activeCustomers: number;
+  newCustomers: number;
+  returningCustomers: number;
+  averageCustomerSpend: number;
+  totalRevenueGenerated: number;
+  averagePurchaseFrequency: number;
+}
+
+export interface CustomerGrowthPoint {
+  month: string;
+  newCustomers: number;
+  cumulativeCustomers: number;
+}
+
+export interface NewVsReturningPoint {
+  month: string;
+  new: number;
+  returning: number;
+}
+
+export interface RevenueByTypePoint {
+  customerType: string;
+  revenue: number;
+}
+
+export interface TopCustomerRow {
+  customerId: string;
+  customerCode: string;
+  name: string;
+  revenue: number;
+  totalOrders: number;
+  favoriteProduct: string | null;
+}
+
+export interface BucketCount {
+  bucket: string;
+  count: number;
+}
+
+export interface LocationCount {
+  location: string;
+  count: number;
+}
+
+export interface MonthlyAcquisitionPoint {
+  month: string;
+  count: number;
+}
+
+export interface CustomerAnalyticsOverview {
+  kpis: CustomerAnalyticsKpis;
+  growthTrend: CustomerGrowthPoint[];
+  newVsReturning: NewVsReturningPoint[];
+  revenueByType: RevenueByTypePoint[];
+  topCustomers: TopCustomerRow[];
+  purchaseFrequency: BucketCount[];
+  locationDistribution: LocationCount[];
+  monthlyAcquisition: MonthlyAcquisitionPoint[];
+  spendingDistribution: BucketCount[];
+}
+
+export interface RecentCustomerRow {
+  customerId: string;
+  customerCode: string;
+  name: string;
+  customerType: CustomerType;
+  createdAt: string;
+}
+
+export interface CustomerInsights {
+  topCustomers: TopCustomerRow[];
+  recentCustomers: RecentCustomerRow[];
+  customerGrowth: CustomerGrowthPoint[];
+  customerRevenueContribution: RevenueByTypePoint[];
 }
 
 export interface DashboardFilterOptions {

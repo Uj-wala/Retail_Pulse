@@ -54,6 +54,11 @@ def get_sales_by_category(current_user: User = Depends(get_current_user), db: Se
     return {"categories": categories}
 
 
+@router.get("/customer-insights")
+def get_customer_insights(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    return analytics_service.get_customer_insights(db, current_user.company_id)
+
+
 # ---------------------------------------------------------------------------
 # Retail Analytics Dashboard (Company Admins & Analysts only)
 # ---------------------------------------------------------------------------

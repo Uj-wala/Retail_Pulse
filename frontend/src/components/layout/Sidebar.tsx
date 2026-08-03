@@ -7,6 +7,7 @@ import {
   Boxes,
   FileText,
   Users,
+  Contact,
   Settings,
   User,
   Sparkles,
@@ -64,6 +65,7 @@ export function Sidebar({ onNavigate, collapsed, onCollapsedChange }: SidebarPro
           <SidebarNavItem collapsed={collapsed} label="Analytics" icon={<BarChart3 className="h-4 w-4" />} to="/analytics" onNavigate={handleNavigation} />
         )}
         <SidebarNavItem collapsed={collapsed} label="Sales" icon={<ShoppingCart className="h-4 w-4" />} to="/sales" onNavigate={handleNavigation} />
+        <SidebarNavItem collapsed={collapsed} label="Customers" icon={<Contact className="h-4 w-4" />} to="/customers" onNavigate={handleNavigation} />
         <SidebarNavItem collapsed={collapsed} label="Products" icon={<Package className="h-4 w-4" />} to="/products" onNavigate={handleNavigation} />
         <SidebarNavItem collapsed={collapsed} label="Categories" icon={<Tags className="h-4 w-4" />} to="/categories" onNavigate={handleNavigation} />
         {canViewInventory && (

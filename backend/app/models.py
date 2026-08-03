@@ -2,7 +2,7 @@ import enum
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Index, Numeric, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, Date, DateTime, Enum, ForeignKey, Index, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .database import Base
@@ -64,6 +64,14 @@ class AuditAction(str, enum.Enum):
     DASHBOARD_VIEWED = "DASHBOARD_VIEWED"
     DASHBOARD_FILTERS_APPLIED = "DASHBOARD_FILTERS_APPLIED"
     REPORT_EXPORTED = "REPORT_EXPORTED"
+    CUSTOMER_CREATED = "CUSTOMER_CREATED"
+    CUSTOMER_UPDATED = "CUSTOMER_UPDATED"
+    CUSTOMER_DELETED = "CUSTOMER_DELETED"
+    CUSTOMER_ACTIVATED = "CUSTOMER_ACTIVATED"
+    CUSTOMER_DEACTIVATED = "CUSTOMER_DEACTIVATED"
+    CUSTOMER_EXPORTED = "CUSTOMER_EXPORTED"
+    CUSTOMER_STATUS_CHANGED = "CUSTOMER_STATUS_CHANGED"
+    CUSTOMER_VIP_PROMOTED = "CUSTOMER_VIP_PROMOTED"
 
 
 class InventoryTransactionType(str, enum.Enum):
@@ -114,6 +122,27 @@ class AuditEntityType(str, enum.Enum):
     SALE = "SALE"
     REPORT = "REPORT"
     DASHBOARD = "DASHBOARD"
+    CUSTOMER = "CUSTOMER"
+
+
+class CustomerType(str, enum.Enum):
+    RETAIL = "RETAIL"
+    WHOLESALE = "WHOLESALE"
+    CORPORATE = "CORPORATE"
+
+
+class Gender(str, enum.Enum):
+    MALE = "MALE"
+    FEMALE = "FEMALE"
+    OTHER = "OTHER"
+    PREFER_NOT_TO_SAY = "PREFER_NOT_TO_SAY"
+
+
+class CustomerSegment(str, enum.Enum):
+    NEW = "NEW"
+    REGULAR = "REGULAR"
+    LOYAL = "LOYAL"
+    VIP = "VIP"
 
 
 class Company(Base):
@@ -281,18 +310,79 @@ class InventoryMovement(Base):
     performer: Mapped[User | None] = relationship()
 
 
+class Customer(Base):
+    __tablename__ = "customers"
+    __table_args__ = (
+        UniqueConstraint("company_id", "email"),
+        UniqueConstraint("company_id", "phone"),
+        UniqueConstraint("company_id", "customer_code"),
+        Index("ix_customers_company_id", "company_id"),
+        Index("ix_customers_company_id_is_active", "company_id", "is_active"),
+        Index("ix_customers_company_id_customer_type", "company_id", "customer_type"),
+    )
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=uuid_str)
+    company_id: Mapped[str] = mapped_column(String, ForeignKey("companies.id"), nullable=False)
+    customer_code: Mapped[str] = mapped_column(String, nullable=False)
+    full_name: Mapped[str] = mapped_column(String, nullable=False)
+    email: Mapped[str] = mapped_column(String, nullable=False)
+    phone: Mapped[str] = mapped_column(String, nullable=False)
+    date_of_birth: Mapped[Date | None] = mapped_column(Date, nullable=True)
+    gender: Mapped[Gender | None] = mapped_column(Enum(Gender, name="Gender"), nullable=True)
+    address: Mapped[str | None] = mapped_column(Text, nullable=True)
+    city: Mapped[str | None] = mapped_column(String, nullable=True)
+    state: Mapped[str | None] = mapped_column(String, nullable=True)
+    country: Mapped[str | None] = mapped_column(String, nullable=True)
+    postal_code: Mapped[str | None] = mapped_column(String, nullable=True)
+    customer_type: Mapped[CustomerType] = mapped_column(Enum(CustomerType, name="CustomerType"), nullable=False)
+    preferred_channel: Mapped[SalesChannel | None] = mapped_column(Enum(SalesChannel, name="SalesChannel"), nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+    summary: Mapped["CustomerPurchaseSummary | None"] = relationship(back_populates="customer", cascade="all, delete-orphan", uselist=False)
+
+
+class CustomerPurchaseSummary(Base):
+    __tablename__ = "customer_purchase_summary"
+    __table_args__ = (
+        UniqueConstraint("customer_id"),
+        Index("ix_customer_purchase_summary_company_id", "company_id"),
+    )
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=uuid_str)
+    customer_id: Mapped[str] = mapped_column(String, ForeignKey("customers.id"), nullable=False)
+    company_id: Mapped[str] = mapped_column(String, ForeignKey("companies.id"), nullable=False)
+    total_orders: Mapped[int] = mapped_column(default=0, nullable=False)
+    total_revenue: Mapped[float] = mapped_column(Numeric(12, 2), default=0, nullable=False)
+    total_quantity: Mapped[int] = mapped_column(default=0, nullable=False)
+    average_order_value: Mapped[float] = mapped_column(Numeric(12, 2), default=0, nullable=False)
+    first_purchase_date: Mapped[DateTime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_purchase_date: Mapped[DateTime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    favorite_product_id: Mapped[str | None] = mapped_column(String, ForeignKey("products.id"), nullable=True)
+    favorite_category_id: Mapped[str | None] = mapped_column(String, ForeignKey("categories.id"), nullable=True)
+    segment: Mapped[CustomerSegment] = mapped_column(Enum(CustomerSegment, name="CustomerSegment"), default=CustomerSegment.NEW, nullable=False)
+    updated_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+    customer: Mapped[Customer] = relationship(back_populates="summary")
+    favorite_product: Mapped[Product | None] = relationship()
+    favorite_category: Mapped[Category | None] = relationship()
+
+
 class Sale(Base):
     __tablename__ = "sales"
     __table_args__ = (
         UniqueConstraint("company_id", "invoice_number"),
         Index("ix_sales_company_id_created_at", "company_id", "created_at"),
         Index("ix_sales_company_id_sale_date", "company_id", "sale_date"),
+        Index("ix_sales_customer_id", "customer_id"),
     )
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=uuid_str)
     company_id: Mapped[str] = mapped_column(String, ForeignKey("companies.id"), nullable=False)
     user_id: Mapped[str] = mapped_column(String, ForeignKey("users.id"), nullable=False)
     invoice_number: Mapped[str] = mapped_column(String, nullable=False)
+    customer_id: Mapped[str | None] = mapped_column(String, ForeignKey("customers.id"), nullable=True)
     # Intentionally optional: supports anonymous/walk-in retail customers who don't provide a name.
     customer_name: Mapped[str | None] = mapped_column(String, nullable=True)
     sale_date: Mapped[DateTime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
@@ -304,6 +394,7 @@ class Sale(Base):
     updated_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
     user: Mapped[User] = relationship()
+    customer: Mapped[Customer | None] = relationship()
     items: Mapped[list["SaleItem"]] = relationship(cascade="all, delete-orphan")
 
 
@@ -336,11 +427,14 @@ class Notification(Base):
     id: Mapped[str] = mapped_column(String, primary_key=True, default=uuid_str)
     company_id: Mapped[str] = mapped_column(String, ForeignKey("companies.id"), nullable=False)
     product_id: Mapped[str | None] = mapped_column(String, ForeignKey("products.id"), nullable=True)
+    customer_id: Mapped[str | None] = mapped_column(String, ForeignKey("customers.id", ondelete="CASCADE"), nullable=True)
     title: Mapped[str] = mapped_column(String, nullable=False)
     message: Mapped[str] = mapped_column(Text, nullable=False)
+    is_read: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     product: Mapped[Product | None] = relationship()
+    customer: Mapped[Customer | None] = relationship()
 
 
 class AuditLog(Base):
@@ -352,7 +446,12 @@ class AuditLog(Base):
     user_id: Mapped[str | None] = mapped_column(String, ForeignKey("users.id"), nullable=True)
     action: Mapped[AuditAction] = mapped_column(Enum(AuditAction, name="AuditAction"), nullable=False)
     entity_type: Mapped[AuditEntityType | None] = mapped_column(Enum(AuditEntityType, name="AuditEntityType"), nullable=True)
+    entity_id: Mapped[str | None] = mapped_column(String, nullable=True)
     details: Mapped[str | None] = mapped_column(String, nullable=True)
+    previous_values: Mapped[str | None] = mapped_column(Text, nullable=True)
+    new_values: Mapped[str | None] = mapped_column(Text, nullable=True)
     ip_address: Mapped[str | None] = mapped_column(String, nullable=True)
     user_agent: Mapped[str | None] = mapped_column(String, nullable=True)
     created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    user: Mapped[User | None] = relationship()

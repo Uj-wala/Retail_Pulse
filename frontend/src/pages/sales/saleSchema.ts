@@ -2,6 +2,7 @@ import { z } from "zod";
 
 export const saleSchema = z.object({
   customerName: z.string().max(255).optional().or(z.literal("")),
+  customerId: z.string().optional().or(z.literal("")),
   saleDate: z.string().optional().or(z.literal("")),
   salesChannel: z.enum(["RETAIL_STORE", "ONLINE_STORE", "MARKETPLACE"]),
   paymentMethod: z.enum(["CASH", "CARD", "UPI", "BANK_TRANSFER"]),

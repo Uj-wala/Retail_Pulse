@@ -1,5 +1,5 @@
 import { axiosClient } from "./axios";
-import type { AnalyticsSummary, CategoryRevenue, RevenuePoint, TopProduct } from "../types";
+import type { AnalyticsSummary, CategoryRevenue, CustomerInsights, RevenuePoint, TopProduct } from "../types";
 
 export const analyticsApi = {
   getSummary: () => axiosClient.get<AnalyticsSummary>("/analytics/summary").then((res) => res.data),
@@ -18,4 +18,6 @@ export const analyticsApi = {
     axiosClient
       .get<{ categories: CategoryRevenue[] }>("/analytics/sales-by-category")
       .then((res) => res.data.categories),
+
+  getCustomerInsights: () => axiosClient.get<CustomerInsights>("/analytics/customer-insights").then((res) => res.data),
 };

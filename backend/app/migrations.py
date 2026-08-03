@@ -217,8 +217,65 @@ def ensure_audit_log_schema(engine: Engine) -> None:
         EXCEPTION WHEN duplicate_object THEN NULL; END $$
         """,
         'ALTER TABLE audit_logs ALTER COLUMN entity_type TYPE "AuditEntityType" USING entity_type::text::"AuditEntityType"',
+        # audit_logs.created_at was left as TIMESTAMP WITHOUT TIME ZONE from an early migration even
+        # though the model declares DateTime(timezone=True) - create_all() never retrofits existing
+        # columns. Every other timestamp this module sorts alongside it (Sale.sale_date,
+        # CustomerPurchaseSummary.first_purchase_date) is a real TIMESTAMPTZ, so comparing them (e.g.
+        # in the customer Timeline / Recent Activity feeds) raised "can't compare offset-naive and
+        # offset-aware datetimes". The naive values were written by converting an aware datetime into
+        # the session's TimeZone setting and dropping the offset, so reinterpreting them against that
+        # same setting recovers the original instant correctly.
+        "ALTER TABLE audit_logs ALTER COLUMN created_at TYPE TIMESTAMPTZ USING created_at AT TIME ZONE current_setting('TimeZone')",
     ]
 
     with engine.begin() as connection:
         for statement in statements:
+            connection.execute(text(statement))
+
+
+def ensure_customer_schema(engine: Engine) -> None:
+    if engine.dialect.name != "postgresql":
+        return
+
+    type_statements = [
+        "DO $$ BEGIN CREATE TYPE \"CustomerType\" AS ENUM ('RETAIL', 'WHOLESALE', 'CORPORATE'); EXCEPTION WHEN duplicate_object THEN NULL; END $$",
+        "DO $$ BEGIN CREATE TYPE \"Gender\" AS ENUM ('MALE', 'FEMALE', 'OTHER', 'PREFER_NOT_TO_SAY'); EXCEPTION WHEN duplicate_object THEN NULL; END $$",
+        "DO $$ BEGIN CREATE TYPE \"CustomerSegment\" AS ENUM ('NEW', 'REGULAR', 'LOYAL', 'VIP'); EXCEPTION WHEN duplicate_object THEN NULL; END $$",
+        'ALTER TYPE "AuditAction" ADD VALUE IF NOT EXISTS \'CUSTOMER_CREATED\'',
+        'ALTER TYPE "AuditAction" ADD VALUE IF NOT EXISTS \'CUSTOMER_UPDATED\'',
+        'ALTER TYPE "AuditAction" ADD VALUE IF NOT EXISTS \'CUSTOMER_DELETED\'',
+        'ALTER TYPE "AuditAction" ADD VALUE IF NOT EXISTS \'CUSTOMER_ACTIVATED\'',
+        'ALTER TYPE "AuditAction" ADD VALUE IF NOT EXISTS \'CUSTOMER_DEACTIVATED\'',
+        'ALTER TYPE "AuditAction" ADD VALUE IF NOT EXISTS \'CUSTOMER_EXPORTED\'',
+        'ALTER TYPE "AuditAction" ADD VALUE IF NOT EXISTS \'CUSTOMER_STATUS_CHANGED\'',
+        'ALTER TYPE "AuditAction" ADD VALUE IF NOT EXISTS \'CUSTOMER_VIP_PROMOTED\'',
+        'ALTER TYPE "AuditEntityType" ADD VALUE IF NOT EXISTS \'CUSTOMER\'',
+    ]
+
+    # ALTER TYPE ... ADD VALUE cannot run in the same transaction as a later statement that
+    # references the new value, so these run in their own connection.begin() block before the
+    # column/table statements below (mirrors ensure_inventory_schema).
+    with engine.begin() as connection:
+        for statement in type_statements:
+            connection.execute(text(statement))
+
+    column_statements = [
+        "ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS entity_id VARCHAR",
+        "ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS previous_values TEXT",
+        "ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS new_values TEXT",
+        "ALTER TABLE sales ADD COLUMN IF NOT EXISTS customer_id VARCHAR REFERENCES customers(id)",
+        "CREATE INDEX IF NOT EXISTS ix_sales_customer_id ON sales(customer_id)",
+        "ALTER TABLE notifications ADD COLUMN IF NOT EXISTS customer_id VARCHAR REFERENCES customers(id)",
+        "ALTER TABLE notifications ADD COLUMN IF NOT EXISTS is_read BOOLEAN NOT NULL DEFAULT FALSE",
+        # The original FK had no ON DELETE rule (defaults to NO ACTION), which meant deleting a
+        # customer would fail with an IntegrityError as soon as they had any notification - and every
+        # customer gets one on creation. Recreate it with ON DELETE CASCADE so customer deletion
+        # (already blocked by application logic while they have purchase history) actually succeeds.
+        "ALTER TABLE notifications DROP CONSTRAINT IF EXISTS notifications_customer_id_fkey",
+        "ALTER TABLE notifications ADD CONSTRAINT notifications_customer_id_fkey "
+        "FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE",
+    ]
+
+    with engine.begin() as connection:
+        for statement in column_statements:
             connection.execute(text(statement))

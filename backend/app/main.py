@@ -5,12 +5,13 @@ from .config import get_settings
 from .database import Base, engine
 from .migrations import (
     ensure_audit_log_schema,
+    ensure_customer_schema,
     ensure_dashboard_schema,
     ensure_inventory_schema,
     ensure_product_schema,
     ensure_sales_schema,
 )
-from .routers import analytics, auth, categories, company, inventory, notifications, products, profile, reports, sales, users
+from .routers import analytics, auth, categories, company, customers, inventory, notifications, products, profile, reports, sales, users
 
 settings = get_settings()
 
@@ -33,6 +34,7 @@ def on_startup() -> None:
     ensure_audit_log_schema(engine)
     ensure_inventory_schema(engine)
     ensure_dashboard_schema(engine)
+    ensure_customer_schema(engine)
 
 
 @app.get("/health")
@@ -40,7 +42,7 @@ def health():
     return {"status": "ok"}
 
 
-api_routers = [auth.router, company.router, users.router, profile.router, categories.router, products.router, inventory.router, notifications.router, sales.router, analytics.router, reports.router]
+api_routers = [auth.router, company.router, users.router, profile.router, categories.router, products.router, inventory.router, notifications.router, sales.router, customers.router, analytics.router, reports.router]
 
 for router in api_routers:
     app.include_router(router, prefix="/api")

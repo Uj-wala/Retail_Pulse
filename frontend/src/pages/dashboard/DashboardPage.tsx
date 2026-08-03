@@ -6,6 +6,7 @@ import { StatCard } from "../../components/dashboard/StatCard";
 import { RevenueChart } from "../../components/dashboard/RevenueChart";
 import { TopProductsCard } from "../../components/dashboard/TopProductsCard";
 import { CategoryBreakdownChart } from "../../components/dashboard/CategoryBreakdownChart";
+import { CustomerInsightsPanel } from "../../components/dashboard/retail/CustomerInsightsPanel";
 import { ErrorState } from "../../components/common/ErrorState";
 import { Spinner } from "../../components/common/Spinner";
 import { formatCurrency } from "../../services/formatters";
@@ -36,6 +37,10 @@ export function DashboardPage() {
   const categoryQuery = useQuery({
     queryKey: ["analytics", "sales-by-category"],
     queryFn: analyticsApi.getSalesByCategory,
+  });
+  const customerInsightsQuery = useQuery({
+    queryKey: ["analytics", "customer-insights"],
+    queryFn: analyticsApi.getCustomerInsights,
   });
 
   const summary = summaryQuery.data;
@@ -127,6 +132,18 @@ export function DashboardPage() {
       ) : (
         <CategoryBreakdownChart data={categoryQuery.data ?? []} />
       )}
+
+      <div className="mt-6">
+        {customerInsightsQuery.isError ? (
+          <ErrorState
+            title="Couldn't load customer insights"
+            description={getApiErrorMessage(customerInsightsQuery.error, "Please try again.")}
+            onRetry={() => customerInsightsQuery.refetch()}
+          />
+        ) : (
+          <CustomerInsightsPanel insights={customerInsightsQuery.data} isLoading={customerInsightsQuery.isLoading} />
+        )}
+      </div>
     </div>
   );
 }

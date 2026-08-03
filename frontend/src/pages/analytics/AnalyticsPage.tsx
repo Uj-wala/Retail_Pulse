@@ -14,6 +14,7 @@ import { TopProductsCategoriesPanel } from "../../components/dashboard/retail/To
 import { SalesBreakdownCharts } from "../../components/dashboard/retail/SalesBreakdownCharts";
 import { InventoryOverviewCharts } from "../../components/dashboard/retail/InventoryOverviewCharts";
 import { StockAlertsPanel } from "../../components/dashboard/retail/StockAlertsPanel";
+import { CustomerInsightsPanel } from "../../components/dashboard/retail/CustomerInsightsPanel";
 import { DrilldownModal, type DrilldownRequest } from "../../components/dashboard/retail/DrilldownModal";
 import type { DashboardFilterValues, DashboardGranularity } from "../../types";
 
@@ -191,6 +192,11 @@ export function AnalyticsPage() {
               />
               <StockAlertsPanel topLowStock={overview?.inventory.topLowStock} outOfStock={overview?.inventory.outOfStock} isLoading={overviewQuery.isLoading} />
             </div>
+          </section>
+
+          <section>
+            <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-content-muted">Customer Analytics</h2>
+            <CustomerInsightsPanel insights={overview?.customers} isLoading={overviewQuery.isLoading} />
           </section>
         </div>
       )}

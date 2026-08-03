@@ -12,6 +12,8 @@ import { ProductsPage } from "../pages/products/ProductsPage";
 import { CategoriesPage } from "../pages/categories/CategoriesPage";
 import { InventoryPage } from "../pages/inventory/InventoryPage";
 import { SalesPage } from "../pages/sales/SalesPage";
+import { CustomersPage } from "../pages/customers/CustomersPage";
+import { CustomerProfilePage } from "../pages/customers/CustomerProfilePage";
 import { AnalyticsPage } from "../pages/analytics/AnalyticsPage";
 import { ReportsPage } from "../pages/reports/ReportsPage";
 import { UsersPage } from "../pages/users/UsersPage";
@@ -39,6 +41,8 @@ export const router = createBrowserRouter([
           { path: "/products", element: <ProductsPage /> },
           { path: "/categories", element: <CategoriesPage /> },
           { path: "/sales", element: <SalesPage /> },
+          { path: "/customers", element: <CustomersPage /> },
+          { path: "/customers/:id", element: <CustomerProfilePage /> },
           { path: "/reports", element: <ReportsPage /> },
           { path: "/profile", element: <ProfilePage /> },
           {
